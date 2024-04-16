@@ -16,6 +16,7 @@ private val permissionsToCheck by lazy {
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.FOREGROUND_SERVICE,
         ).apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -33,12 +34,6 @@ fun ComponentActivity.grantPermissions(onGranted: () -> Unit) {
         return
     }
 
-    with(logViewModel) {
-        if (!haveBtPermissions) {
-            haveBtPermissions = true
-            clear()
-        }
-    }
     onGranted()
 }
 

@@ -32,6 +32,12 @@ class MainActivity : ComponentActivity() {
         }
 
         grantPermissions {
+            with(logViewModel) {
+                if (!haveBtPermissions) {
+                    haveBtPermissions = true
+                    clear()
+                }
+            }
             startForegroundService(
                 Intent(
                     this@MainActivity,

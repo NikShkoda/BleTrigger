@@ -16,7 +16,7 @@ class BluetoothManager private constructor(context: Context) {
         PendingIntent.getBroadcast(
             context, SCAN_REQUEST_CODE, Intent(context, DeviceBroadcastReceiver::class.java)
                 .setAction("com.solvek.bletrigger.ACTION_FOUND"),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            PendingIntent.FLAG_MUTABLE
         )
     }
 
