@@ -40,12 +40,12 @@ fun ComponentActivity.startScanner() {
 }
 
 private fun ComponentActivity.checkForPermissions(permissions: Array<String>): Boolean {
-    if (permissions.all { permission ->
+    if (permissions.isNotEmpty() && permissions.all { permission ->
             ActivityCompat.checkSelfPermission(
-                this,
-                permission
+                this, permission
             ) == PackageManager.PERMISSION_GRANTED
-        }) {
+        }
+    ) {
         return true
     }
 
@@ -55,8 +55,8 @@ private fun ComponentActivity.checkForPermissions(permissions: Array<String>): B
     }
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-            if (result.all { it.value }) {
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { isGranted ->
+            if (isGranted.isNotEmpty() && isGranted.all { granted -> granted.value }) {
                 startScanner()
             }
         }.launch(permissions)
