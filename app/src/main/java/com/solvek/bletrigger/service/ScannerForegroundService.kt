@@ -31,22 +31,16 @@ class ScannerForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val notification = generateNotification()
+        startForeground(NOTIFICATION_ID, notification)
         return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder {
-        stopForeground()
-
         return localBinder
     }
 
-    override fun onRebind(intent: Intent?) {
-        stopForeground()
-
-        super.onRebind(intent)
-    }
-
-    private fun generateNotification(): Notification? {
+    private fun generateNotification(): Notification {
         val mainNotificationText = "App is working in background"
         val titleText = "BleTrigger"
         val notificationChannel = NotificationChannel(
@@ -76,15 +70,6 @@ class ScannerForegroundService : Service() {
                 activityPendingIntent
             )
             .build()
-    }
-
-    override fun onUnbind(intent: Intent?): Boolean {
-
-        val notification = generateNotification()
-        startForeground(NOTIFICATION_ID, notification)
-        notificationManager.notify(NOTIFICATION_ID, notification)
-
-        return true
     }
 
     private fun stopForeground() {
