@@ -10,8 +10,6 @@ import android.os.Build
 import android.util.Log
 import androidx.core.util.size
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
-import com.solvek.bletrigger.manager.BluetoothManager
-import com.solvek.bletrigger.ui.activity.MainActivity
 
 
 class DeviceBroadcastReceiver : BroadcastReceiver() {
@@ -45,10 +43,7 @@ class DeviceBroadcastReceiver : BroadcastReceiver() {
         scanResults.forEachIndexed { idx, scanResult ->
             context.handleScanResult(idx, scanResult)
         }
-        BluetoothManager.getDefaultInstance().stopScan()
-        context.startActivity(Intent(context, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
-        })
+        //BluetoothManager.getDefaultInstance().stopScan()
     }
 
     private fun Context.handleScanResult(idx: Int, scanResult: ScanResult) {

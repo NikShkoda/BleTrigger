@@ -54,20 +54,23 @@ class MainActivity : ComponentActivity() {
         }
 
         grantPermissions {
-            /*bindService(
+            bindService(
                 Intent(
                     this@MainActivity,
                     ScannerForegroundService::class.java
                 ),
                 scannerServiceConnection,
                 Context.BIND_AUTO_CREATE
-            )*/
-            BluetoothManager.getDefaultInstance().startScanCallback()
+            )
         }
     }
 
     override fun onStop() {
         super.onStop()
-        scannerService?.unbindService(scannerServiceConnection)
+        if (scannerServiceBound) {
+            unbindService(scannerServiceConnection)
+            scannerServiceBound = false
+        }
+        super.onStop()
     }
 }

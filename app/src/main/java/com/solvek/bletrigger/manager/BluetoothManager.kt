@@ -1,9 +1,7 @@
 package com.solvek.bletrigger.manager
 
 import android.app.PendingIntent
-import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
-import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.Intent
@@ -20,23 +18,6 @@ class BluetoothManager private constructor(context: Context) {
                 .setAction("com.solvek.bletrigger.ACTION_FOUND"),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
-    }
-
-    private val callback by lazy {
-        object : ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: ScanResult?) {
-                super.onScanResult(callbackType, result)
-                try {
-                    Log.i(TAG, result?.device?.name ?: "No device")
-                } catch (error: SecurityException) {
-                    error("Scan is only allowed if app has needed permissions")
-                }
-            }
-
-            override fun onScanFailed(errorCode: Int) {
-                super.onScanFailed(errorCode)
-            }
-        }
     }
 
     private val bluetoothAdapter by lazy {
@@ -63,7 +44,7 @@ class BluetoothManager private constructor(context: Context) {
             .build()
     }
 
-    fun startScanIntent(
+    fun startScan(
         scanFilters: List<ScanFilter> = filters,
         scanSettings: ScanSettings = settings,
         pendingIntent: PendingIntent = scanPendingIntent
@@ -73,23 +54,6 @@ class BluetoothManager private constructor(context: Context) {
                 scanFilters,
                 scanSettings,
                 pendingIntent
-            )
-            Log.i(TAG, "scan started")
-        } catch (error: SecurityException) {
-            error("Scan is only allowed if app has needed permissions")
-        }
-    }
-
-    fun startScanCallback(
-        scanFilters: List<ScanFilter> = filters,
-        scanSettings: ScanSettings = settings,
-        scanCallback: ScanCallback = callback
-    ) {
-        try {
-            bluetoothAdapter.bluetoothLeScanner.startScan(
-                scanFilters,
-                scanSettings,
-                scanCallback
             )
             Log.i(TAG, "scan started")
         } catch (error: SecurityException) {

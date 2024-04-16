@@ -6,17 +6,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
-import android.bluetooth.le.ScanResult
-import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
-import android.os.ParcelUuid
-import androidx.activity.ComponentActivity
 import androidx.core.app.NotificationCompat
+import com.solvek.bletrigger.R
 import com.solvek.bletrigger.manager.BluetoothManager
 import com.solvek.bletrigger.ui.activity.MainActivity
 
@@ -31,30 +26,8 @@ class ScannerForegroundService : Service() {
         super.onCreate()
 
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        (getSystemService(
-            ComponentActivity.BLUETOOTH_SERVICE
-        ) as android.bluetooth.BluetoothManager).adapter.bluetoothLeScanner.startScan(
-            mutableListOf<ScanFilter>().apply {
-                val filterShortServiceUUID = ScanFilter.Builder()
-                    .setServiceUuid(ParcelUuid.fromString(BluetoothManager.HEART_RATE_SERVICE_UUID))
-                    .build()
-                add(filterShortServiceUUID)
-            },
-            ScanSettings.Builder()
-                .setLegacy(false)
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
-                .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
-                .build(),
-            object : ScanCallback() {
-                override fun onScanFailed(errorCode: Int) {
-                    super.onScanFailed(errorCode)
-                }
 
-                override fun onScanResult(callbackType: Int, result: ScanResult?) {
-                    super.onScanResult(callbackType, result)
-                }
-            }
-        )
+        BluetoothManager.getDefaultInstance().startScan()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -71,8 +44,6 @@ class ScannerForegroundService : Service() {
         stopForeground()
 
         super.onRebind(intent)
-
-        startForeground(NOTIFICATION_ID, generateNotification())
     }
 
     private fun generateNotification(): Notification? {
@@ -94,12 +65,13 @@ class ScannerForegroundService : Service() {
 
         return notificationCompatBuilder
             .setContentTitle(titleText)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentText(mainNotificationText)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setOngoing(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .addAction(
-                android.R.drawable.sym_def_app_icon,
+                R.drawable.ic_go_to,
                 "Launch TriggerApp",
                 activityPendingIntent
             )
@@ -107,7 +79,12 @@ class ScannerForegroundService : Service() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        return super.onUnbind(intent)
+
+        val notification = generateNotification()
+        startForeground(NOTIFICATION_ID, notification)
+        notificationManager.notify(NOTIFICATION_ID, notification)
+
+        return true
     }
 
     private fun stopForeground() {
@@ -120,7 +97,7 @@ class ScannerForegroundService : Service() {
     }
 
     companion object {
-        private const val NOTIFICATION_ID = 12345678
+        private const val NOTIFICATION_ID = 1
 
         private const val NOTIFICATION_CHANNEL_ID = "while_in_use_channel_01"
     }

@@ -12,11 +12,15 @@ private val permissionsToCheck by lazy {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
         arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION)
     } else {
-        arrayOf(
+        mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT
-        )
+        ).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }.toTypedArray()
     }
 }
 
@@ -63,11 +67,11 @@ private fun ComponentActivity.checkForPermissions(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { isGranted ->
             if (isGranted.isNotEmpty() && isGranted.all { granted -> granted.value }) {
-                /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                } else {*/
+                } else {
                     onGranted()
-                //}
+                }
             }
         }.launch(permissions)
     }
