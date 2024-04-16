@@ -8,8 +8,8 @@
         android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission
         android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission
-        android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+<!--    <uses-permission
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />-->
     <uses-permission
         android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
@@ -46,6 +46,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+<!--        <service
+            android:name=".service.ScannerForegroundService"
+            android:foregroundServiceType="connectedDevice"
+            android:enabled="true"
+            android:exported="false" />-->
 
         <receiver android:name=".receiver.DeviceBroadcastReceiver"
             android:exported="false">
