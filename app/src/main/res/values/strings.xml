@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">BleTrigger</string>
+    <string name="text_device_was_found">Device was Found!\nNext step will be to connect to it</string>
+    <string name="text_start_scan_again">Start scan again</string>
 </resources>

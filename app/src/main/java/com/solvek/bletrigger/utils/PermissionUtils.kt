@@ -1,8 +1,14 @@
 package com.solvek.bletrigger.utils
 
 import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
@@ -16,8 +22,7 @@ private val permissionsToCheck by lazy {
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,
-            Manifest.permission.BLUETOOTH_SCAN,
-            Manifest.permission.FOREGROUND_SERVICE,
+            Manifest.permission.FOREGROUND_SERVICE
         ).apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 add(Manifest.permission.POST_NOTIFICATIONS)
@@ -59,9 +64,12 @@ private fun ComponentActivity.checkForPermissions(
         val backgroundLocationPermissionLauncher =
             registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
                 if (isGranted) {
+                    askToDisableBatteryOptimization(this)
+                    askForSystemAlertWindow(this)
                     onGranted()
                 }
             }
+
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { isGranted ->
@@ -69,6 +77,8 @@ private fun ComponentActivity.checkForPermissions(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 } else {
+                    askToDisableBatteryOptimization(this)
+                    askForSystemAlertWindow(this)
                     onGranted()
                 }
             }
@@ -76,4 +86,24 @@ private fun ComponentActivity.checkForPermissions(
     }
 
     return false
+}
+
+@SuppressLint("BatteryLife")
+private fun askToDisableBatteryOptimization(context: Context) {
+    val intent = Intent()
+    val pm: PowerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+    if (pm.isIgnoringBatteryOptimizations(context.packageName)) {
+        intent.action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+    } else {
+        intent.action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+        intent.data = Uri.parse("package:${context.packageName}")
+    }
+    context.startActivity(intent)
+}
+
+private fun askForSystemAlertWindow(context: Context) {
+    val intent = Intent()
+    intent.action = Settings.ACTION_MANAGE_OVERLAY_PERMISSION
+    intent.data = Uri.parse("package:${context.packageName}")
+    context.startActivity(intent)
 }
