@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.solvek.bletrigger.service.ScannerForegroundService
 import com.solvek.bletrigger.ui.content.WakeUpContent
 import com.solvek.bletrigger.ui.theme.BleTriggerTheme
 
@@ -27,6 +28,12 @@ class WakeUpActivity : BaseActivity() {
                 }
             }
         }
+        stopService(
+            Intent(
+                this,
+                ScannerForegroundService::class.java
+            )
+        )
     }
 
     override fun onNewIntent(intent: Intent?) {
