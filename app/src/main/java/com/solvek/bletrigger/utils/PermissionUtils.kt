@@ -11,6 +11,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
 
@@ -65,6 +66,7 @@ private fun ComponentActivity.checkForPermissions(
             registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
                 if (isGranted) {
                     askToDisableBatteryOptimization(this)
+                    askForScheduleExactAlarms(this)
                     onGranted()
                 }
             }
@@ -77,6 +79,7 @@ private fun ComponentActivity.checkForPermissions(
                     backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 } else {
                     askToDisableBatteryOptimization(this)
+                    askForScheduleExactAlarms(this)
                     onGranted()
                 }
             }
@@ -97,4 +100,14 @@ private fun askToDisableBatteryOptimization(context: Context) {
         intent.data = Uri.parse("package:${context.packageName}")
     }
     context.startActivity(intent)
+}
+
+@RequiresApi(Build.VERSION_CODES.S)
+private fun askForScheduleExactAlarms(context: Context) {
+    Intent().apply {
+        action = Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
+        data = Uri.parse("package:${context.packageName}")
+    }.also {
+        context.startActivity(it)
+    }
 }

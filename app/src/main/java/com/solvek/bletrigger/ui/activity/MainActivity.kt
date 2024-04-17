@@ -1,7 +1,9 @@
 package com.solvek.bletrigger.ui.activity
 
+import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import androidx.activity.ComponentActivity
@@ -44,8 +46,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
             lifecycleScope.launch {
-                val pm: PowerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-                while (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+                val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                while (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        !powerManager.isIgnoringBatteryOptimizations(packageName) &&
+                                !alarmManager.canScheduleExactAlarms()
+                    } else {
+                        !powerManager.isIgnoringBatteryOptimizations(packageName)
+                    }
+                ) {
                     delay(100)
                 }
                 startForegroundService(
