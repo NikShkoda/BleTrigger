@@ -65,7 +65,6 @@ private fun ComponentActivity.checkForPermissions(
             registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
                 if (isGranted) {
                     askToDisableBatteryOptimization(this)
-                    askForSystemAlertWindow(this)
                     onGranted()
                 }
             }
@@ -78,7 +77,6 @@ private fun ComponentActivity.checkForPermissions(
                     backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 } else {
                     askToDisableBatteryOptimization(this)
-                    askForSystemAlertWindow(this)
                     onGranted()
                 }
             }
@@ -98,12 +96,5 @@ private fun askToDisableBatteryOptimization(context: Context) {
         intent.action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
         intent.data = Uri.parse("package:${context.packageName}")
     }
-    context.startActivity(intent)
-}
-
-private fun askForSystemAlertWindow(context: Context) {
-    val intent = Intent()
-    intent.action = Settings.ACTION_MANAGE_OVERLAY_PERMISSION
-    intent.data = Uri.parse("package:${context.packageName}")
     context.startActivity(intent)
 }

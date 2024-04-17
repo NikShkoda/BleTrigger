@@ -7,14 +7,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.PowerManager
 import android.util.Log
 import androidx.core.util.size
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
-import com.solvek.bletrigger.manager.BluetoothManager
-import com.solvek.bletrigger.service.ScannerForegroundService
-import com.solvek.bletrigger.ui.activity.WakeUpActivity
-import java.util.concurrent.TimeUnit
 
 
 class DeviceBroadcastReceiver : BroadcastReceiver() {
@@ -48,26 +43,6 @@ class DeviceBroadcastReceiver : BroadcastReceiver() {
         scanResults.forEachIndexed { idx, scanResult ->
             context.handleScanResult(idx, scanResult)
         }
-        startWakeUpActivity(context)
-    }
-
-    private fun startWakeUpActivity(context: Context) {
-        @Suppress("DEPRECATION")
-        with(
-            (context.getSystemService(Context.POWER_SERVICE) as PowerManager).newWakeLock(
-                PowerManager.SCREEN_DIM_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
-                ScannerForegroundService::class.java.name
-            )
-        ) {
-            acquire(TimeUnit.SECONDS.toMillis(5))
-            release()
-        }
-        BluetoothManager.getDefaultInstance().stopScan()
-        context.startActivity(
-            Intent(context, WakeUpActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-        )
     }
 
     private fun Context.handleScanResult(idx: Int, scanResult: ScanResult) {

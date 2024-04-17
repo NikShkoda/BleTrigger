@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.PowerManager
-import android.provider.Settings
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -20,7 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
-class MainActivity : BaseActivity() {
+class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,10 +45,7 @@ class MainActivity : BaseActivity() {
             }
             lifecycleScope.launch {
                 val pm: PowerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-                while (
-                    !pm.isIgnoringBatteryOptimizations(packageName) &&
-                    !Settings.canDrawOverlays(this@MainActivity)
-                ) {
+                while (!pm.isIgnoringBatteryOptimizations(packageName)) {
                     delay(100)
                 }
                 startForegroundService(
