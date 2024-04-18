@@ -28,8 +28,6 @@ private fun Context.handleScanResult(
     scanResult: ScanResult,
     onDeviceFound: () -> Unit
 ) {
-    onDeviceFound()
-    createSendRequestWork(context, scanResult.device.address)
     val address = scanResult.device.address.replace(":", "")
     Log.i(TAG, "Handling scan result $address")
     val sr = scanResult.scanRecord

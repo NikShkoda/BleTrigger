@@ -59,11 +59,11 @@ class LogViewModel(context: Context) {
     fun append(message: String) {
         val row = "${TIME_FORMAT.format(System.currentTimeMillis())}: $message"
         val c = _log.value
-        update(if (c.isBlank()) row else "$c\r\n$row")
+        update(if (c.isBlank() || c == LOG_DEF_VALUE) row else "$c\r\n$row")
     }
 
     fun clear() {
-        update("")
+        update(LOG_DEF_VALUE)
     }
 
     fun setConnectionEnabled(enabled: Boolean) {

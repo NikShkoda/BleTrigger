@@ -50,7 +50,7 @@ class ScannerForegroundService : Service() {
                     onFound(applicationContext, result) {
                         scope.launch {
                             BluetoothManager.getDefaultInstance().stopScanWithCallback()
-                            delay(TimeUnit.SECONDS.toMillis(10))
+                            delay(TimeUnit.SECONDS.toMillis(30))
                             BluetoothManager.getDefaultInstance().startScanWithCallback()
                         }
                     }
