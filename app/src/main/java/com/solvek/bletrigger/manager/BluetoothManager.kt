@@ -1,7 +1,6 @@
 package com.solvek.bletrigger.manager
 
 import android.app.PendingIntent
-import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.le.ScanCallback
@@ -13,15 +12,17 @@ import android.os.ParcelUuid
 import android.util.Log
 import androidx.activity.ComponentActivity
 import com.solvek.bletrigger.receiver.DeviceBroadcastReceiver
+import com.solvek.bletrigger.receiver.DeviceBroadcastReceiver.Companion.ACTION_FOUND
 
 class BluetoothManager private constructor(context: Context) {
 
     private var bluetoothGatt: BluetoothGatt? = null
+    private var scanCallback: ScanCallback? = null
 
     private val scanPendingIntent by lazy {
         PendingIntent.getBroadcast(
             context, SCAN_REQUEST_CODE, Intent(context, DeviceBroadcastReceiver::class.java)
-                .setAction("com.solvek.bletrigger.ACTION_FOUND"),
+                .setAction(ACTION_FOUND),
             PendingIntent.FLAG_MUTABLE
         )
     }
@@ -79,6 +80,18 @@ class BluetoothManager private constructor(context: Context) {
                 scanCallback
             )
             Log.i(TAG, "scan started")
+            this.scanCallback = scanCallback
+        } catch (error: SecurityException) {
+            error("Scan is only allowed if app has needed permissions")
+        }
+    }
+
+    fun stopScanWithCallback() {
+        try {
+            scanCallback?.let {
+                bluetoothAdapter.bluetoothLeScanner.stopScan(it)
+                Log.i(TAG, "scan stopped")
+            }
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }

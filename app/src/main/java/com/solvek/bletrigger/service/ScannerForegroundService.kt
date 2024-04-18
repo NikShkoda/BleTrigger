@@ -16,9 +16,9 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.solvek.bletrigger.R
-import com.solvek.bletrigger.application.BleTriggerApplication
 import com.solvek.bletrigger.manager.BluetoothManager
 import com.solvek.bletrigger.receiver.DeviceBroadcastReceiver
+import com.solvek.bletrigger.receiver.DeviceBroadcastReceiver.Companion.ACTION_DOZE_MODE
 import com.solvek.bletrigger.ui.activity.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,10 +59,11 @@ class ScannerForegroundService : Service() {
     }
 
     private fun wakeUpDevice() {
-        val pendingIntent = PendingIntent.getForegroundService(
+        val pendingIntent = PendingIntent.getBroadcast(
             applicationContext,
             DOZE_WAKEUP_REQUEST_CODE,
-            Intent(applicationContext, ScannerForegroundService::class.java),
+            Intent(applicationContext, DeviceBroadcastReceiver::class.java)
+                .setAction(ACTION_DOZE_MODE),
             PendingIntent.FLAG_IMMUTABLE
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -70,7 +71,7 @@ class ScannerForegroundService : Service() {
         } else {
             true
         }.let { canSchedule ->
-            if(canSchedule) {
+            if (canSchedule) {
                 alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
                     System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(5),

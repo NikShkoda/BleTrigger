@@ -10,14 +10,16 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.util.size
+import androidx.work.Constraints
 import androidx.work.Data
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
-import com.solvek.bletrigger.job.SendRequestWorker
-import com.solvek.bletrigger.job.SendRequestWorker.Companion.PARAM_DEVICE_ADDRESS
 import com.solvek.bletrigger.manager.BluetoothManager
+import com.solvek.bletrigger.worker.SendRequestWorker
+import com.solvek.bletrigger.worker.SendRequestWorker.Companion.PARAM_DEVICE_ADDRESS
 
 
 class DeviceBroadcastReceiver : BroadcastReceiver() {
@@ -61,7 +63,9 @@ class DeviceBroadcastReceiver : BroadcastReceiver() {
 
         Log.i(TAG, "Received ${scanResults.size} scan results")
         scanResults.forEachIndexed { idx, scanResult ->
-            context.handleScanResult(context, idx, scanResult)
+            context.handleScanResult(context, idx, scanResult) {
+                BluetoothManager.getDefaultInstance().stopScan()
+            }
         }
     }
 
@@ -71,14 +75,21 @@ class DeviceBroadcastReceiver : BroadcastReceiver() {
             scanCallback = object : ScanCallback() {
                 override fun onScanResult(callbackType: Int, result: ScanResult) {
                     super.onScanResult(callbackType, result)
-                    context.handleScanResult(context, idx, result)
+                    context.handleScanResult(context, idx, result) {
+                        BluetoothManager.getDefaultInstance().stopScanWithCallback()
+                    }
                     idx++
                 }
             }
         )
     }
 
-    private fun Context.handleScanResult(context: Context, idx: Int, scanResult: ScanResult) {
+    private fun Context.handleScanResult(
+        context: Context,
+        idx: Int,
+        scanResult: ScanResult,
+        onDeviceFound: () -> Unit
+    ) {
         val address = scanResult.device.address.replace(":", "")
         Log.i(TAG, "Handling scan result $idx $address")
         val sr = scanResult.scanRecord
@@ -104,6 +115,7 @@ class DeviceBroadcastReceiver : BroadcastReceiver() {
         Log.i(TAG, "Has data status: $hasData")
         logViewModel.onDevice(address, hasData)
         if (hasData) {
+            onDeviceFound()
             createSendRequestWork(context, scanResult.device.address)
         }
     }
@@ -112,6 +124,11 @@ class DeviceBroadcastReceiver : BroadcastReceiver() {
         val uploadWorkRequest: WorkRequest =
             OneTimeWorkRequestBuilder<SendRequestWorker>()
                 .setInputData(Data.Builder().putString(PARAM_DEVICE_ADDRESS, address).build())
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                )
                 .build()
         WorkManager
             .getInstance(context)
@@ -120,7 +137,7 @@ class DeviceBroadcastReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "DeviceBroadcastReceiver"
-        private const val ACTION_FOUND = "com.solvek.bletrigger.ACTION_FOUND"
-        private const val ACTION_DOZE_MODE = "com.solvek.bletrigger.DOZE_MODE"
+        const val ACTION_FOUND = "com.solvek.bletrigger.ACTION_FOUND"
+        const val ACTION_DOZE_MODE = "com.solvek.bletrigger.DOZE_MODE"
     }
 }
