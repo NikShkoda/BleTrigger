@@ -15,7 +15,12 @@ class LogViewModel(context: Context) {
     private val prefs = context.getSharedPreferences("LogViewModel", 0)
 
     private val _log = MutableStateFlow("")
-    val log = _log.asStateFlow()
+    val log
+        get() = _log.asStateFlow()
+
+    private val _connectionEnabled = MutableStateFlow(false)
+    val connectionEnabled
+        get() = _connectionEnabled.asStateFlow()
 
     private val registry =
         Registry(prefs.getString(KEY_REGISTRY, REGISTRY_DEF_VALUE) ?: REGISTRY_DEF_VALUE)
@@ -28,6 +33,11 @@ class LogViewModel(context: Context) {
 
     init {
         _log.value = prefs.getString(KEY_LOG, LOG_DEF_VALUE) ?: LOG_DEF_VALUE
+        _connectionEnabled.value = prefs.getBoolean(KEY_CONNECTION_ENABLED, false)
+    }
+
+    fun isConnectionEnabled(): Boolean {
+        return _connectionEnabled.value
     }
 
     fun onDevice(id: String, hasData: Boolean) {
@@ -56,6 +66,10 @@ class LogViewModel(context: Context) {
         update("")
     }
 
+    fun setConnectionEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_CONNECTION_ENABLED, enabled).apply()
+    }
+
     private fun update(logContent: String) {
         _log.value = logContent
         prefs.edit().putString(KEY_LOG, logContent).apply()
@@ -65,6 +79,7 @@ class LogViewModel(context: Context) {
         private const val LOG_DEF_VALUE = ""
         private const val REGISTRY_DEF_VALUE = "{}"
         private const val KEY_LOG = "log_content"
+        private const val KEY_CONNECTION_ENABLED = "connection_enabled"
         private const val KEY_HAVE_BT_PERMISSION = "have_bt_permissions"
         private const val KEY_REGISTRY = "registry"
         private val TIME_FORMAT = SimpleDateFormat.getDateTimeInstance()

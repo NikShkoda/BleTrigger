@@ -62,9 +62,11 @@ class DeviceBroadcastReceiver : BroadcastReceiver() {
         }
 
         Log.i(TAG, "Received ${scanResults.size} scan results")
-        scanResults.forEachIndexed { idx, scanResult ->
-            context.handleScanResult(context, idx, scanResult) {
-                BluetoothManager.getDefaultInstance().stopScan()
+        if (context.logViewModel.isConnectionEnabled()) {
+            scanResults.forEachIndexed { idx, scanResult ->
+                context.handleScanResult(context, idx, scanResult) {
+                    BluetoothManager.getDefaultInstance().stopScan()
+                }
             }
         }
     }
