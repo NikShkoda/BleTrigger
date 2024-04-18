@@ -6,14 +6,16 @@ import android.util.Log
 import androidx.core.util.size
 import androidx.work.Constraints
 import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.work.WorkRequest
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
 import com.solvek.bletrigger.worker.SendRequestWorker
 
 const val TAG = "DataHandler"
+const val BLE_WORK = "BLE_WORK"
 
 fun onFound(context: Context, scanResult: ScanResult, onDeviceFound: () -> Unit) {
     if (context.logViewModel.isConnectionEnabled()) {
@@ -26,6 +28,8 @@ private fun Context.handleScanResult(
     scanResult: ScanResult,
     onDeviceFound: () -> Unit
 ) {
+    onDeviceFound()
+    createSendRequestWork(context, scanResult.device.address)
     val address = scanResult.device.address.replace(":", "")
     Log.i(TAG, "Handling scan result $address")
     val sr = scanResult.scanRecord
@@ -60,7 +64,7 @@ private fun Context.handleScanResult(
 }
 
 private fun createSendRequestWork(context: Context, address: String) {
-    val uploadWorkRequest: WorkRequest =
+    val uploadWorkRequest: OneTimeWorkRequest =
         OneTimeWorkRequestBuilder<SendRequestWorker>()
             .setInputData(
                 Data.Builder().putString(SendRequestWorker.PARAM_DEVICE_ADDRESS, address).build()
@@ -73,5 +77,5 @@ private fun createSendRequestWork(context: Context, address: String) {
             .build()
     WorkManager
         .getInstance(context)
-        .enqueue(uploadWorkRequest)
+        .enqueueUniqueWork(BLE_WORK, ExistingWorkPolicy.KEEP, uploadWorkRequest)
 }

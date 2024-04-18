@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
+import android.bluetooth.le.ScanSettings.CALLBACK_TYPE_ALL_MATCHES
 import android.content.Context
 import android.os.ParcelUuid
 import android.util.Log
@@ -13,7 +14,7 @@ import androidx.activity.ComponentActivity
 class BluetoothManager private constructor(context: Context) {
 
     private var bluetoothGatt: BluetoothGatt? = null
-    private var scanCallback: ScanCallback? = null
+    private var callback: ScanCallback? = null
 
     private val bluetoothAdapter by lazy {
         (context.getSystemService(
@@ -40,7 +41,7 @@ class BluetoothManager private constructor(context: Context) {
     fun startScanWithCallback(
         scanFilters: List<ScanFilter> = filters,
         scanSettings: ScanSettings = settings,
-        scanCallback: ScanCallback
+        scanCallback: ScanCallback? = callback
     ) {
         try {
             bluetoothAdapter.bluetoothLeScanner.startScan(
@@ -49,7 +50,7 @@ class BluetoothManager private constructor(context: Context) {
                 scanCallback
             )
             Log.i(TAG, "scan started")
-            this.scanCallback = scanCallback
+            this.callback = scanCallback
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }
@@ -57,7 +58,7 @@ class BluetoothManager private constructor(context: Context) {
 
     fun stopScanWithCallback() {
         try {
-            scanCallback?.let {
+            callback?.let {
                 bluetoothAdapter.bluetoothLeScanner.stopScan(it)
                 Log.i(TAG, "scan stopped")
             }
