@@ -7,25 +7,21 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.solvek.bletrigger.R
 import com.solvek.bletrigger.manager.BluetoothManager
-import com.solvek.bletrigger.receiver.DeviceBroadcastReceiver
-import com.solvek.bletrigger.receiver.DeviceBroadcastReceiver.Companion.ACTION_DOZE_MODE
 import com.solvek.bletrigger.ui.activity.MainActivity
+import com.solvek.bletrigger.utils.onFound
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import java.util.concurrent.TimeUnit
 
 class ScannerForegroundService : Service() {
 
@@ -46,43 +42,18 @@ class ScannerForegroundService : Service() {
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        BluetoothManager.getDefaultInstance().startScan()
+        BluetoothManager.getDefaultInstance()
+            .startScanWithCallback(scanCallback = object : ScanCallback() {
+                override fun onScanResult(callbackType: Int, result: ScanResult) {
+                    super.onScanResult(callbackType, result)
+                    onFound(applicationContext, result) {
 
-        // Detect when device will enter doze mode. We will need to wake it up to scan
-        scope.launch {
-            while (!powerManager.isDeviceIdleMode) {
-                delay(5000L)
-            }
-            Log.d("DeviceBroadcastReceiver", "Wake up device happens!")
-            wakeUpDevice()
-        }
+                    }
+                }
+            })
     }
 
-    private fun wakeUpDevice() {
-        val pendingIntent = PendingIntent.getBroadcast(
-            applicationContext,
-            DOZE_WAKEUP_REQUEST_CODE,
-            Intent(applicationContext, DeviceBroadcastReceiver::class.java)
-                .setAction(ACTION_DOZE_MODE),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            alarmManager.canScheduleExactAlarms()
-        } else {
-            true
-        }.let { canSchedule ->
-            if (canSchedule) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(5),
-                    pendingIntent
-                )
-                Log.d("DeviceBroadcastReceiver", "Wake up device should happen in 5 seconds!")
-            }
-        }
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         val notification = generateNotification()
         startForeground(NOTIFICATION_ID, notification)
         return START_NOT_STICKY
@@ -124,17 +95,12 @@ class ScannerForegroundService : Service() {
             .build()
     }
 
-    private fun stopForeground() {
-        stopForeground(STOP_FOREGROUND_REMOVE)
-    }
-
     inner class LocalBinder : Binder() {
         internal val service: ScannerForegroundService
             get() = this@ScannerForegroundService
     }
 
     companion object {
-        private const val DOZE_WAKEUP_REQUEST_CODE = 101
         private const val NOTIFICATION_ID = 1
         private const val NOTIFICATION_CHANNEL_ID = "while_in_use_channel_01"
     }

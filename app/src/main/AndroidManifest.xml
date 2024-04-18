@@ -45,7 +45,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".ui.activity.WakeUpActivity"/>
 
         <service
             android:name=".service.ScannerForegroundService"
@@ -53,14 +52,6 @@
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
 
-        <receiver
-            android:name=".receiver.DeviceBroadcastReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.solvek.bletrigger.ACTION_FOUND" />
-                <action android:name="com.solvek.bletrigger.ACTION_DOZE_MODE" />
-            </intent-filter>
-        </receiver>
     </application>
 
 </manifest>

@@ -79,7 +79,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
 
     companion object {
         // For testing purposes. This way it's easier to spot request log
-        private const val TAG = "DeviceBroadcastReceiver"
+        private const val TAG = "DataHandler"
         const val PARAM_DEVICE_ADDRESS = "PARAM_DEVICE_ADDRESS"
     }
 }

@@ -33,7 +33,7 @@ class LogViewModel(context: Context) {
 
     init {
         _log.value = prefs.getString(KEY_LOG, LOG_DEF_VALUE) ?: LOG_DEF_VALUE
-        _connectionEnabled.value = prefs.getBoolean(KEY_CONNECTION_ENABLED, false)
+        _connectionEnabled.value = prefs.getBoolean(KEY_CONNECTION_ENABLED, true)
     }
 
     fun isConnectionEnabled(): Boolean {
@@ -76,7 +76,7 @@ class LogViewModel(context: Context) {
     }
 
     companion object {
-        private const val LOG_DEF_VALUE = ""
+        private const val LOG_DEF_VALUE = "No logs to show yet"
         private const val REGISTRY_DEF_VALUE = "{}"
         private const val KEY_LOG = "log_content"
         private const val KEY_CONNECTION_ENABLED = "connection_enabled"
