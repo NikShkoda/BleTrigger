@@ -61,7 +61,7 @@ fun MainContent(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Switch(
-                checked = connectionEnabled,
+                checked = connectionEnabledChecked.value,
                 onCheckedChange = { isChecked ->
                     connectionEnabledChecked.value = isChecked
                     model.setConnectionEnabled(isChecked)
