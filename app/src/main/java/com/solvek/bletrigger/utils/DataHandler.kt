@@ -12,21 +12,23 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
+import com.solvek.bletrigger.manager.BluetoothManager
+import com.solvek.bletrigger.ui.viewmodel.LogViewModel
 import com.solvek.bletrigger.worker.SendRequestWorker
 
 const val TAG = "DataHandler"
 const val BLE_WORK = "BLE_WORK"
 
-suspend fun onFound(context: Context, scanResult: ScanResult, onDeviceFound: () -> Unit) {
+fun onFound(context: Context, scanResult: ScanResult) {
     if (context.logViewModel.isConnectionEnabled()) {
-        context.handleScanResult(context, scanResult, onDeviceFound)
+        context.handleScanResult(context, scanResult)
+        BluetoothManager.getDefaultInstance().stopScanWithCallback()
     }
 }
 
-private suspend fun Context.handleScanResult(
+private fun Context.handleScanResult(
     context: Context,
-    scanResult: ScanResult,
-    onDeviceFound: () -> Unit
+    scanResult: ScanResult
 ) {
     val address = scanResult.device.address.replace(":", "")
     Log.i(TAG, "Handling scan result $address")
@@ -53,11 +55,21 @@ private suspend fun Context.handleScanResult(
     }
 
     val hasData = bytes[6].toInt() != 0 || bytes[7].toInt() != 0
+    bytes.forEach { byte ->
+        Log.i(TAG, byte.toString())
+    }
+    Log.i(TAG, "\n Bytes")
+    "8D0B4056611355500000".toByteArray().forEach { byte ->
+        Log.i(TAG, byte.toString())
+    }
     Log.i(TAG, "Has data status: $hasData")
     logViewModel.onDevice(address, hasData)
-    if (hasData) {
-        onDeviceFound()
+    val currentState = logViewModel.getState()
+    if (hasData && currentState == LogViewModel.STATE.STATE_IDLE) {
+        logViewModel.onState(LogViewModel.STATE.STATE_CONNECTED)
         createSendRequestWork(context, scanResult.device.address)
+    } else if (!hasData && currentState == LogViewModel.STATE.STATE_CONNECTED) {
+        logViewModel.onState(LogViewModel.STATE.STATE_IDLE)
     }
 }
 

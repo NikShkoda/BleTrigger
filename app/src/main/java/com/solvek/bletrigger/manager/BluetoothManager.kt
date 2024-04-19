@@ -5,11 +5,11 @@ import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
-import android.bluetooth.le.ScanSettings.CALLBACK_TYPE_ALL_MATCHES
 import android.content.Context
 import android.os.ParcelUuid
 import android.util.Log
 import androidx.activity.ComponentActivity
+import java.util.UUID
 
 class BluetoothManager private constructor(context: Context) {
 
@@ -22,13 +22,32 @@ class BluetoothManager private constructor(context: Context) {
         ) as android.bluetooth.BluetoothManager).adapter
     }
 
-    private val filters by lazy {
+    private val idleStateFilters by lazy {
         mutableListOf<ScanFilter>().apply {
             val filterShortServiceUUID = ScanFilter.Builder()
                 .setServiceUuid(ParcelUuid.fromString(HEART_RATE_SERVICE_UUID))
+                //.setManufacturerData(2957, "8D0B4056611355500000".toByteArray())
                 .build()
             add(filterShortServiceUUID)
         }
+    }
+
+    private val connectedStateFilters by lazy {
+        mutableListOf<ScanFilter>().apply {
+            val filterShortServiceUUID = ScanFilter.Builder()
+                .setServiceUuid(ParcelUuid.fromString(HEART_RATE_SERVICE_UUID))
+                //.setManufacturerData(2957, "8D0B4056611355500100".toByteArray())
+                .build()
+            add(filterShortServiceUUID)
+        }
+    }
+
+    fun String.decodeHex(): ByteArray {
+        check(length % 2 == 0) { "Must have an even length" }
+
+        return chunked(2)
+            .map { it.toInt(16).toByte() }
+            .toByteArray()
     }
 
     private val settings by lazy {
@@ -39,14 +58,13 @@ class BluetoothManager private constructor(context: Context) {
     }
 
     fun startScanWithCallback(
-        scanFilters: List<ScanFilter> = filters,
-        scanSettings: ScanSettings = settings,
+        isInIdleState: Boolean,
         scanCallback: ScanCallback? = callback
     ) {
         try {
             bluetoothAdapter.bluetoothLeScanner.startScan(
-                scanFilters,
-                scanSettings,
+                if (isInIdleState) idleStateFilters else connectedStateFilters,
+                settings,
                 scanCallback
             )
             Log.i(TAG, "scan started")
@@ -80,9 +98,27 @@ class BluetoothManager private constructor(context: Context) {
         }
     }
 
+    fun discoverServices() {
+        try {
+            bluetoothGatt?.discoverServices()
+        } catch (error: SecurityException) {
+            error("Scan is only allowed if app has needed permissions")
+        }
+    }
+
     fun disconnectDevice() {
         try {
             bluetoothGatt?.disconnect()
+        } catch (error: SecurityException) {
+            error("Scan is only allowed if app has needed permissions")
+        }
+    }
+
+    fun readTime() {
+        try {
+            val characteristic = bluetoothGatt?.getService(UUID.fromString(TIME_SERVICE))
+                ?.getCharacteristic(UUID.fromString(TIME_CHARACTERISTIC))
+            val value = bluetoothGatt?.readCharacteristic(characteristic)
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }
@@ -94,6 +130,8 @@ class BluetoothManager private constructor(context: Context) {
         const val SCAN_REPORT_DELAY_MS = 10000L
 
         const val HEART_RATE_SERVICE_UUID = "0000180D-0000-1000-8000-00805F9B34FB"
+        const val TIME_SERVICE = "92fc3961-6a47-43d4-82b0-4677de96378b"
+        const val TIME_CHARACTERISTIC = "a4e232e7-5ab0-4687-bddd-f1349c68247e"
 
         @Volatile
         private var INSTANCE: BluetoothManager? = null

@@ -22,6 +22,10 @@ class LogViewModel(context: Context) {
     val connectionEnabled
         get() = _connectionEnabled.asStateFlow()
 
+    private val _state = MutableStateFlow(STATE.STATE_IDLE)
+    val state
+        get() = _state.asStateFlow()
+
     private val registry =
         Registry(prefs.getString(KEY_REGISTRY, REGISTRY_DEF_VALUE) ?: REGISTRY_DEF_VALUE)
 
@@ -34,10 +38,15 @@ class LogViewModel(context: Context) {
     init {
         _log.value = prefs.getString(KEY_LOG, LOG_DEF_VALUE) ?: LOG_DEF_VALUE
         _connectionEnabled.value = prefs.getBoolean(KEY_CONNECTION_ENABLED, true)
+        _state.value = STATE.entries[prefs.getInt(KEY_STATE, STATE.STATE_IDLE.ordinal)]
     }
 
     fun isConnectionEnabled(): Boolean {
         return _connectionEnabled.value
+    }
+
+    fun getState(): STATE {
+        return state.value
     }
 
     fun onDevice(id: String, hasData: Boolean) {
@@ -56,10 +65,19 @@ class LogViewModel(context: Context) {
         }
     }
 
+    fun onState(state: STATE) {
+        _state.value = state
+        prefs.edit().putInt(KEY_STATE, state.ordinal).apply()
+    }
+
     fun append(message: String) {
-        val row = "${TIME_FORMAT.format(System.currentTimeMillis())}: $message"
+        val row = "${formatTime(System.currentTimeMillis())}: $message"
         val c = _log.value
         update(if (c.isBlank() || c == LOG_DEF_VALUE) row else "$c\r\n$row")
+    }
+
+    fun formatTime(timeMs: Long) : String {
+        return TIME_FORMAT.format(timeMs)
     }
 
     fun clear() {
@@ -82,6 +100,11 @@ class LogViewModel(context: Context) {
         private const val KEY_CONNECTION_ENABLED = "connection_enabled"
         private const val KEY_HAVE_BT_PERMISSION = "have_bt_permissions"
         private const val KEY_REGISTRY = "registry"
+        private const val KEY_STATE = "state"
         private val TIME_FORMAT = SimpleDateFormat.getDateTimeInstance()
+    }
+
+    enum class STATE {
+        STATE_IDLE, STATE_CONNECTED;
     }
 }

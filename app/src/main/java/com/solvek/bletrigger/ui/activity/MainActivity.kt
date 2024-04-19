@@ -19,6 +19,8 @@ import com.solvek.bletrigger.ui.theme.BleTriggerTheme
 import com.solvek.bletrigger.utils.grantPermissions
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 
 class MainActivity : ComponentActivity() {

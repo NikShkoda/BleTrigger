@@ -2,6 +2,7 @@ package com.solvek.bletrigger.worker
 
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.util.Log
@@ -16,6 +17,9 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.UUID
 import kotlin.coroutines.resume
 
 
@@ -35,9 +39,9 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             ) {
                 when (newState) {
                     BluetoothProfile.STATE_CONNECTED -> {
-                        connectContinuation.resume(ContinuationResult.Success)
                         Log.i(TAG, "Connected to Gatt")
                         applicationContext.logViewModel.append("Connected to Gatt")
+                        BluetoothManager.getDefaultInstance().discoverServices()
                     }
 
                     BluetoothProfile.STATE_DISCONNECTED -> {
@@ -50,6 +54,36 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                         Log.i(TAG, "Disconnected from Gatt")
                         applicationContext.logViewModel.append("Disconnected from Gatt")
                     }
+                }
+            }
+
+            override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+                super.onServicesDiscovered(gatt, status)
+                BluetoothManager.getDefaultInstance().readTime()
+            }
+
+            override fun onCharacteristicRead(
+                gatt: BluetoothGatt,
+                characteristic: BluetoothGattCharacteristic,
+                value: ByteArray,
+                status: Int
+            ) {
+                super.onCharacteristicRead(gatt, characteristic, value, status)
+                if (characteristic.uuid == UUID.fromString(BluetoothManager.TIME_CHARACTERISTIC)) {
+                    val buffer = ByteBuffer.wrap(value)
+                    val deviceTime = buffer.getTime()
+                    applicationContext.logViewModel.append(
+                        "Patch time is: ${
+                            applicationContext.logViewModel.formatTime(
+                                deviceTime
+                            )
+                        }\nAndroid device time is: ${
+                            applicationContext.logViewModel.formatTime(
+                                System.currentTimeMillis()
+                            )
+                        }"
+                    )
+                    connectContinuation.resume(ContinuationResult.Success)
                 }
             }
         }
@@ -78,6 +112,21 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             }
         }
         return Result.success()
+    }
+
+    private fun ByteBuffer.getTime(): Long {
+        val b = ByteBuffer.allocate(8)
+        b.order(ByteOrder.LITTLE_ENDIAN)
+        b.put(this.array(), position(), 6)
+        b.put(0)
+        b.put(0)
+        b.position(0)
+        skip(6)
+        return b.long
+    }
+
+    private fun ByteBuffer.skip(amount : Int) {
+        this.position(this.position()+amount)
     }
 
     private suspend fun makeRequest() {
