@@ -22,8 +22,8 @@ import kotlin.coroutines.resume
 class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
-    private lateinit var connectContinuation: CancellableContinuation<BluetoothGatt>
-    private lateinit var disconnectContinuation: CancellableContinuation<BluetoothGatt>
+    private lateinit var connectContinuation: CancellableContinuation<ContinuationResult>
+    private lateinit var disconnectContinuation: CancellableContinuation<ContinuationResult>
 
     override suspend fun doWork(): Result {
         applicationContext.logViewModel.append("Started a worker")
@@ -35,13 +35,18 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             ) {
                 when (newState) {
                     BluetoothProfile.STATE_CONNECTED -> {
-                        connectContinuation.resume(gatt)
+                        connectContinuation.resume(ContinuationResult.Success)
                         Log.i(TAG, "Connected to Gatt")
                         applicationContext.logViewModel.append("Connected to Gatt")
                     }
 
                     BluetoothProfile.STATE_DISCONNECTED -> {
-                        disconnectContinuation.resume(gatt)
+                        if (this@SendRequestWorker::disconnectContinuation.isInitialized) {
+                            disconnectContinuation.resume(ContinuationResult.Success)
+                        } else {
+                            // This means device itself disconnect without our call
+                            connectContinuation.resume(ContinuationResult.EndedEarlier)
+                        }
                         Log.i(TAG, "Disconnected from Gatt")
                         applicationContext.logViewModel.append("Disconnected from Gatt")
                     }
@@ -50,7 +55,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
         }
         val deviceAddress = inputData.getString(PARAM_DEVICE_ADDRESS)
             ?: error("Device should be discovered before connection")
-        suspendCancellableCoroutine { continuation ->
+        val result = suspendCancellableCoroutine { continuation ->
             this.connectContinuation = continuation
             BluetoothManager.getDefaultInstance().connectToDevice(
                 applicationContext,
@@ -58,12 +63,20 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                 callback
             )
         }
-        delay(10000L)
-        suspendCancellableCoroutine { continuation ->
-            this.disconnectContinuation = continuation
-            BluetoothManager.getDefaultInstance().disconnectDevice()
+        when (result) {
+            ContinuationResult.EndedEarlier -> {
+                makeRequest()
+            }
+
+            ContinuationResult.Success -> {
+                delay(10000L)
+                suspendCancellableCoroutine { continuation ->
+                    this.disconnectContinuation = continuation
+                    BluetoothManager.getDefaultInstance().disconnectDevice()
+                }
+                makeRequest()
+            }
         }
-        makeRequest()
         return Result.success()
     }
 
@@ -87,5 +100,10 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
         // For testing purposes. This way it's easier to spot request log
         private const val TAG = "DataHandler"
         const val PARAM_DEVICE_ADDRESS = "PARAM_DEVICE_ADDRESS"
+    }
+
+    sealed class ContinuationResult {
+        object Success : ContinuationResult()
+        object EndedEarlier : ContinuationResult()
     }
 }

@@ -13,13 +13,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
 import com.solvek.bletrigger.worker.SendRequestWorker
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.sync.Mutex
 
 const val TAG = "DataHandler"
 const val BLE_WORK = "BLE_WORK"
-
-private val mutex = Mutex()
 
 suspend fun onFound(context: Context, scanResult: ScanResult, onDeviceFound: () -> Unit) {
     if (context.logViewModel.isConnectionEnabled()) {
@@ -60,11 +56,8 @@ private suspend fun Context.handleScanResult(
     Log.i(TAG, "Has data status: $hasData")
     logViewModel.onDevice(address, hasData)
     if (hasData) {
-        mutex.lock()
         onDeviceFound()
         createSendRequestWork(context, scanResult.device.address)
-        delay(5000)
-        mutex.unlock()
     }
 }
 
