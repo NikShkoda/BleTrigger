@@ -102,6 +102,13 @@ class BluetoothManager private constructor(context: Context) {
     fun disconnectDevice() {
         try {
             bluetoothGatt?.disconnect()
+        } catch (error: SecurityException) {
+            error("Scan is only allowed if app has needed permissions")
+        }
+    }
+
+    fun closeGatt() {
+        try {
             bluetoothGatt?.close()
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
