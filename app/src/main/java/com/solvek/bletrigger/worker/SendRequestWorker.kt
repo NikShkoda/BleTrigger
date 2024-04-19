@@ -51,7 +51,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                         applicationContext.logViewModel.append("Disconnected from Gatt")
                         BluetoothManager.getDefaultInstance().closeGatt()
                         if (this@SendRequestWorker::disconnectContinuation.isInitialized) {
-                            disconnectContinuation.resume(ContinuationResult.Success)
+                            disconnectContinuation.resume(ContinuationResult.Success(gatt))
                         }
                     }
                 }
