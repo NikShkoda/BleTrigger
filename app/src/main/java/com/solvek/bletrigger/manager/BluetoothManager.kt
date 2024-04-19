@@ -53,6 +53,7 @@ class BluetoothManager private constructor(context: Context) {
     private val settings by lazy {
         ScanSettings.Builder()
             .setLegacy(false)
+            .setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH)
             .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
             .build()
     }
