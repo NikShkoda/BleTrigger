@@ -15,15 +15,13 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.solvek.bletrigger.R
-import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
 import com.solvek.bletrigger.manager.BluetoothManager
 import com.solvek.bletrigger.ui.activity.MainActivity
-import com.solvek.bletrigger.ui.viewmodel.LogViewModel
 import com.solvek.bletrigger.utils.onFound
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class ScannerForegroundService : Service() {
@@ -47,31 +45,22 @@ class ScannerForegroundService : Service() {
                 super.onScanResult(callbackType, result)
                 scope.launch {
                     onFound(applicationContext, result) {
-                        //BluetoothManager.getDefaultInstance().stopScanWithCallback()
+                        scope.launch {
+                            BluetoothManager.getDefaultInstance().stopScanWithCallback()
+                            delay(15000L)
+                            startScan()
+                        }
                     }
                 }
             }
         }
-        scope.launch {
-            applicationContext.logViewModel.state.collectLatest { state ->
-                when(state) {
-                    LogViewModel.STATE.STATE_IDLE -> {
-                        BluetoothManager.getDefaultInstance()
-                            .startScanWithCallback(
-                                isInIdleState = true,
-                                scanCallback = callback
-                            )
-                    }
-                    LogViewModel.STATE.STATE_CONNECTED -> {
-                        BluetoothManager.getDefaultInstance()
-                            .startScanWithCallback(
-                                isInIdleState = false,
-                                scanCallback = callback
-                            )
-                    }
-                }
-            }
-        }
+        BluetoothManager.getDefaultInstance()
+            .startScanWithCallback(callback)
+    }
+
+    private fun startScan() {
+        BluetoothManager.getDefaultInstance()
+            .startScanWithCallback()
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {

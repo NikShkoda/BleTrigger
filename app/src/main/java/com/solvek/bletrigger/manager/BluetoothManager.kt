@@ -32,16 +32,6 @@ class BluetoothManager private constructor(context: Context) {
         }
     }
 
-    private val connectedStateFilters by lazy {
-        mutableListOf<ScanFilter>().apply {
-            val filterShortServiceUUID = ScanFilter.Builder()
-                .setServiceUuid(ParcelUuid.fromString(HEART_RATE_SERVICE_UUID))
-                .setManufacturerData(2957, byteArrayOf(64, 86, 97, 19, 85, 80, 0, 0))
-                .build()
-            add(filterShortServiceUUID)
-        }
-    }
-
     fun String.decodeHex(): ByteArray {
         check(length % 2 == 0) { "Must have an even length" }
 
@@ -59,12 +49,11 @@ class BluetoothManager private constructor(context: Context) {
     }
 
     fun startScanWithCallback(
-        isInIdleState: Boolean,
         scanCallback: ScanCallback? = callback
     ) {
         try {
             bluetoothAdapter.bluetoothLeScanner.startScan(
-                if (isInIdleState) idleStateFilters else connectedStateFilters,
+                idleStateFilters,
                 settings,
                 scanCallback
             )
