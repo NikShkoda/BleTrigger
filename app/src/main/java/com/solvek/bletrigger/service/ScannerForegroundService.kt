@@ -44,40 +44,15 @@ class ScannerForegroundService : Service() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 super.onScanResult(callbackType, result)
                 scope.launch {
-                    onFound(applicationContext, result) {
-                        scope.launch {
-                            BluetoothManager.getDefaultInstance().stopScanWithCallback()
-                            delay(15000L)
-                            startScan()
-                        }
-                    }
+                    BluetoothManager.getDefaultInstance().stopScanWithCallback()
+                    delay(15000L)
+                    BluetoothManager.getDefaultInstance().startScanWithCallback(applicationContext)
+                    onFound(applicationContext, result) {}
                 }
             }
         }
         BluetoothManager.getDefaultInstance()
             .startScanWithCallback(applicationContext, callback)
-    }
-
-    private fun startScan() {
-        val callback = object : ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: ScanResult) {
-                super.onScanResult(callbackType, result)
-                scope.launch {
-                    onFound(applicationContext, result) {
-                        scope.launch {
-                            BluetoothManager.getDefaultInstance().stopScanWithCallback()
-                            delay(15000L)
-                            startScan()
-                        }
-                    }
-                }
-            }
-        }
-        BluetoothManager.getDefaultInstance()
-            .startScanWithCallback(
-                applicationContext,
-                callback
-            )
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {

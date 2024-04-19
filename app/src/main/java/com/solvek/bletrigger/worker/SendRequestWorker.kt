@@ -1,5 +1,6 @@
 package com.solvek.bletrigger.worker
 
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
@@ -29,6 +30,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
     private lateinit var connectContinuation: CancellableContinuation<ContinuationResult>
     private lateinit var disconnectContinuation: CancellableContinuation<ContinuationResult>
 
+    @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
         applicationContext.logViewModel.append("Started a worker")
         val callback = object : BluetoothGattCallback() {
@@ -81,7 +83,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                             )
                         }"
                     )
-                    connectContinuation.resume(ContinuationResult.Success)
+                    connectContinuation.resume(ContinuationResult.Success(gatt))
                 }
             }
         }
@@ -100,11 +102,12 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                 makeRequest()
             }
 
-            ContinuationResult.Success -> {
+            is ContinuationResult.Success -> {
                 delay(10000L)
                 suspendCancellableCoroutine { continuation ->
                     this.disconnectContinuation = continuation
-                    BluetoothManager.getDefaultInstance().disconnectDevice()
+                    result.gatt.disconnect()
+                    result.gatt.close()
                 }
                 makeRequest()
             }
@@ -150,7 +153,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
     }
 
     sealed class ContinuationResult {
-        object Success : ContinuationResult()
+        data class Success(val gatt: BluetoothGatt) : ContinuationResult()
         object EndedEarlier : ContinuationResult()
     }
 }
