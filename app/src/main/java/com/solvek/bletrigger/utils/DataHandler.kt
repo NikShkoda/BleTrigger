@@ -13,17 +13,21 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
 import com.solvek.bletrigger.worker.SendRequestWorker
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
 
 const val TAG = "DataHandler"
 const val BLE_WORK = "BLE_WORK"
 
-fun onFound(context: Context, scanResult: ScanResult, onDeviceFound: () -> Unit) {
+private val mutex = Mutex()
+
+suspend fun onFound(context: Context, scanResult: ScanResult, onDeviceFound: () -> Unit) {
     if (context.logViewModel.isConnectionEnabled()) {
         context.handleScanResult(context, scanResult, onDeviceFound)
     }
 }
 
-private fun Context.handleScanResult(
+private suspend fun Context.handleScanResult(
     context: Context,
     scanResult: ScanResult,
     onDeviceFound: () -> Unit
@@ -36,7 +40,12 @@ private fun Context.handleScanResult(
         return
     }
     val md = sr.manufacturerSpecificData
-    if (md.size != 1) {
+    mutex.lock()
+    onDeviceFound()
+    createSendRequestWork(context, scanResult.device.address)
+    delay(5000)
+    mutex.unlock()
+    /*if (md.size != 1) {
         Log.w(
             TAG,
             "Manufacturer data contains ${md.size} item. Exactly one is expected"
@@ -56,9 +65,12 @@ private fun Context.handleScanResult(
     Log.i(TAG, "Has data status: $hasData")
     logViewModel.onDevice(address, hasData)
     if (hasData) {
+        mutex.lock()
         onDeviceFound()
         createSendRequestWork(context, scanResult.device.address)
-    }
+        delay(5000)
+        mutex.unlock()
+    }*/
 }
 
 private fun createSendRequestWork(context: Context, address: String) {

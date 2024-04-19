@@ -26,7 +26,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.solvek.bletrigger.R
 import com.solvek.bletrigger.ui.theme.Typography
@@ -36,6 +39,7 @@ import com.solvek.bletrigger.ui.viewmodel.LogViewModel
 fun MainContent(
     model: LogViewModel
 ) {
+    val clipboardManager: ClipboardManager = LocalClipboardManager.current
     Column(
         Modifier
             .fillMaxSize()
@@ -71,22 +75,44 @@ fun MainContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Button(
-            modifier = Modifier
-                .wrapContentSize()
-                .background(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(8.dp)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            Button(
+                modifier = Modifier
+                    .wrapContentSize()
+                    .background(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(
+                        all = 4.dp
+                    ),
+                onClick = model::clear
+            ) {
+                Text(
+                    text = "Clear logs",
+                    style = Typography.bodyLarge
                 )
-                .padding(
-                    all = 4.dp
-                ),
-            onClick = model::clear
-        ) {
-            Text(
-                text = "Clear logs",
-                style = Typography.bodyLarge
-            )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                modifier = Modifier
+                    .wrapContentSize()
+                    .background(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(
+                        all = 4.dp
+                    ),
+                onClick = {
+                    clipboardManager.setText(AnnotatedString(log))
+                }
+            ) {
+                Text(
+                    text = "Copy logs to buffer",
+                    style = Typography.bodyLarge
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))

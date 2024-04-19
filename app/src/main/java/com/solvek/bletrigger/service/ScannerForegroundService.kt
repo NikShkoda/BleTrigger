@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.solvek.bletrigger.R
 import com.solvek.bletrigger.manager.BluetoothManager
@@ -32,6 +33,7 @@ class ScannerForegroundService : Service() {
     private val localBinder = LocalBinder()
 
     private lateinit var notificationManager: NotificationManager
+    private lateinit var powerManager: PowerManager
 
     @SuppressLint("MissingPermission")
     override fun onCreate() {
@@ -43,11 +45,13 @@ class ScannerForegroundService : Service() {
             .startScanWithCallback(scanCallback = object : ScanCallback() {
                 override fun onScanResult(callbackType: Int, result: ScanResult) {
                     super.onScanResult(callbackType, result)
-                    onFound(applicationContext, result) {
-                        scope.launch {
-                            BluetoothManager.getDefaultInstance().stopScanWithCallback()
-                            delay(TimeUnit.SECONDS.toMillis(30))
-                            BluetoothManager.getDefaultInstance().startScanWithCallback()
+                    scope.launch {
+                        onFound(applicationContext, result) {
+                            scope.launch {
+                                BluetoothManager.getDefaultInstance().stopScanWithCallback()
+                                delay(TimeUnit.SECONDS.toMillis(30))
+                                BluetoothManager.getDefaultInstance().startScanWithCallback()
+                            }
                         }
                     }
                 }

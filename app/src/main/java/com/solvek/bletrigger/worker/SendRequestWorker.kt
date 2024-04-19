@@ -26,6 +26,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
     private lateinit var disconnectContinuation: CancellableContinuation<BluetoothGatt>
 
     override suspend fun doWork(): Result {
+        applicationContext.logViewModel.append("Started a worker")
         val callback = object : BluetoothGattCallback() {
             override fun onConnectionStateChange(
                 gatt: BluetoothGatt,
@@ -57,7 +58,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                 callback
             )
         }
-        delay(5000L)
+        delay(10000L)
         suspendCancellableCoroutine { continuation ->
             this.disconnectContinuation = continuation
             BluetoothManager.getDefaultInstance().disconnectDevice()
