@@ -57,9 +57,9 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                 }
             }
 
-            override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+            override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
                 super.onServicesDiscovered(gatt, status)
-                BluetoothManager.getDefaultInstance().readTime()
+                BluetoothManager.getDefaultInstance().readTime(gatt)
             }
 
             override fun onCharacteristicRead(

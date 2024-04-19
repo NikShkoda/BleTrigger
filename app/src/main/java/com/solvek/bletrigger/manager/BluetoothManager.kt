@@ -44,6 +44,7 @@ class BluetoothManager private constructor(context: Context) {
     private val settings by lazy {
         ScanSettings.Builder()
             .setLegacy(false)
+            .setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH)
             .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
             .build()
     }
@@ -114,11 +115,11 @@ class BluetoothManager private constructor(context: Context) {
         }
     }
 
-    fun readTime() {
+    fun readTime(gatt: BluetoothGatt) {
         try {
-            val characteristic = bluetoothGatt?.getService(UUID.fromString(TIME_SERVICE))
+            val characteristic = gatt.getService(UUID.fromString(TIME_SERVICE))
                 ?.getCharacteristic(UUID.fromString(TIME_CHARACTERISTIC))
-            val value = bluetoothGatt?.readCharacteristic(characteristic)
+            gatt.readCharacteristic(characteristic)
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }

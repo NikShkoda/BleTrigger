@@ -54,16 +54,12 @@ private fun Context.handleScanResult(
     }
 
     val hasData = bytes[6].toInt() != 0 || bytes[7].toInt() != 0
+    if(hasData) {
+        onDeviceFound()
+        createSendRequestWork(context, scanResult.device.address)
+    }
     Log.i(TAG, "Has data status: $hasData")
     logViewModel.onDevice(address, hasData)
-    val currentState = logViewModel.getState()
-    if (hasData && currentState == LogViewModel.STATE.STATE_IDLE) {
-        onDeviceFound()
-        logViewModel.onState(LogViewModel.STATE.STATE_CONNECTED)
-        createSendRequestWork(context, scanResult.device.address)
-    } else if (!hasData && currentState == LogViewModel.STATE.STATE_CONNECTED) {
-        logViewModel.onState(LogViewModel.STATE.STATE_IDLE)
-    }
 }
 
 private fun createSendRequestWork(context: Context, address: String) {
