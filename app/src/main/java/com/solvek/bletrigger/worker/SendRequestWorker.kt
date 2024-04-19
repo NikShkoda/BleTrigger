@@ -49,9 +49,6 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                         applicationContext.logViewModel.append("Disconnected from Gatt")
                         if (this@SendRequestWorker::disconnectContinuation.isInitialized) {
                             disconnectContinuation.resume(ContinuationResult.Success)
-                        } else {
-                            // This means device itself disconnect without our call
-                            connectContinuation.resume(ContinuationResult.EndedEarlier)
                         }
                     }
                 }
