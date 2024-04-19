@@ -47,7 +47,7 @@ class ScannerForegroundService : Service() {
                 super.onScanResult(callbackType, result)
                 scope.launch {
                     onFound(applicationContext, result) {
-                        BluetoothManager.getDefaultInstance().stopScanWithCallback()
+                        //BluetoothManager.getDefaultInstance().stopScanWithCallback()
                     }
                 }
             }

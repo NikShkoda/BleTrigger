@@ -12,7 +12,6 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
-import com.solvek.bletrigger.manager.BluetoothManager
 import com.solvek.bletrigger.ui.viewmodel.LogViewModel
 import com.solvek.bletrigger.worker.SendRequestWorker
 
@@ -55,13 +54,6 @@ private fun Context.handleScanResult(
     }
 
     val hasData = bytes[6].toInt() != 0 || bytes[7].toInt() != 0
-    bytes.forEach { byte ->
-        Log.i(TAG, byte.toString())
-    }
-    Log.i(TAG, "\n Bytes")
-    "8D0B4056611355500000".toByteArray().forEach { byte ->
-        Log.i(TAG, byte.toString())
-    }
     Log.i(TAG, "Has data status: $hasData")
     logViewModel.onDevice(address, hasData)
     val currentState = logViewModel.getState()

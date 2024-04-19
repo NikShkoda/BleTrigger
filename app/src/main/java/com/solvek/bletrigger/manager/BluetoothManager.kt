@@ -26,7 +26,7 @@ class BluetoothManager private constructor(context: Context) {
         mutableListOf<ScanFilter>().apply {
             val filterShortServiceUUID = ScanFilter.Builder()
                 .setServiceUuid(ParcelUuid.fromString(HEART_RATE_SERVICE_UUID))
-                //.setManufacturerData(2957, "8D0B4056611355500000".toByteArray())
+                .setManufacturerData(2957, byteArrayOf(64, 86, 97, 19, 85, 80, 1, 0))
                 .build()
             add(filterShortServiceUUID)
         }
@@ -36,7 +36,7 @@ class BluetoothManager private constructor(context: Context) {
         mutableListOf<ScanFilter>().apply {
             val filterShortServiceUUID = ScanFilter.Builder()
                 .setServiceUuid(ParcelUuid.fromString(HEART_RATE_SERVICE_UUID))
-                //.setManufacturerData(2957, "8D0B4056611355500100".toByteArray())
+                .setManufacturerData(2957, byteArrayOf(64, 86, 97, 19, 85, 80, 0, 0))
                 .build()
             add(filterShortServiceUUID)
         }
