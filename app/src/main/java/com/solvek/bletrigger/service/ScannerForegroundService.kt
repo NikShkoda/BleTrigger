@@ -55,12 +55,12 @@ class ScannerForegroundService : Service() {
             }
         }
         BluetoothManager.getDefaultInstance()
-            .startScanWithCallback(callback)
+            .startScanWithCallback(applicationContext, callback)
     }
 
     private fun startScan() {
         BluetoothManager.getDefaultInstance()
-            .startScanWithCallback()
+            .startScanWithCallback(applicationContext)
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {

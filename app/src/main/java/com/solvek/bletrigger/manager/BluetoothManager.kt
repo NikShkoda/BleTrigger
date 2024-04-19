@@ -9,6 +9,7 @@ import android.content.Context
 import android.os.ParcelUuid
 import android.util.Log
 import androidx.activity.ComponentActivity
+import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
 import java.util.UUID
 
 class BluetoothManager private constructor(context: Context) {
@@ -49,6 +50,7 @@ class BluetoothManager private constructor(context: Context) {
     }
 
     fun startScanWithCallback(
+        context: Context,
         scanCallback: ScanCallback? = callback
     ) {
         try {
@@ -57,6 +59,7 @@ class BluetoothManager private constructor(context: Context) {
                 settings,
                 scanCallback
             )
+            context.logViewModel.append("Scan started")
             Log.i(TAG, "scan started")
             this.callback = scanCallback
         } catch (error: SecurityException) {
@@ -99,6 +102,7 @@ class BluetoothManager private constructor(context: Context) {
     fun disconnectDevice() {
         try {
             bluetoothGatt?.disconnect()
+            bluetoothGatt?.close()
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }
