@@ -40,12 +40,7 @@ private suspend fun Context.handleScanResult(
         return
     }
     val md = sr.manufacturerSpecificData
-    mutex.lock()
-    onDeviceFound()
-    createSendRequestWork(context, scanResult.device.address)
-    delay(5000)
-    mutex.unlock()
-    /*if (md.size != 1) {
+    if (md.size != 1) {
         Log.w(
             TAG,
             "Manufacturer data contains ${md.size} item. Exactly one is expected"
@@ -70,7 +65,7 @@ private suspend fun Context.handleScanResult(
         createSendRequestWork(context, scanResult.device.address)
         delay(5000)
         mutex.unlock()
-    }*/
+    }
 }
 
 private fun createSendRequestWork(context: Context, address: String) {
