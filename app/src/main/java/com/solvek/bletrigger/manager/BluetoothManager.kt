@@ -1,8 +1,8 @@
 package com.solvek.bletrigger.manager
 
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
-import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
@@ -11,7 +11,9 @@ import android.os.Build
 import android.os.ParcelUuid
 import android.util.Log
 import androidx.activity.ComponentActivity
+import java.lang.reflect.Method
 import java.util.UUID
+
 
 class BluetoothManager private constructor(context: Context) {
 
@@ -54,8 +56,7 @@ class BluetoothManager private constructor(context: Context) {
     private val settings by lazy {
         ScanSettings.Builder()
             .setLegacy(true)
-            .setNumOfMatches(ScanSettings.MATCH_NUM_ONE_ADVERTISEMENT)
-            .setMatchMode(ScanSettings.MATCH_MODE_STICKY)
+            .setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH)
             .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
             .build()
     }
@@ -69,7 +70,7 @@ class BluetoothManager private constructor(context: Context) {
                 settings,
                 scanCallback
             )
-            Log.i(TAG, "scan started")
+            Log.i(TAG, "scan started for data")
             isScanning = true
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
@@ -85,7 +86,7 @@ class BluetoothManager private constructor(context: Context) {
                 settings,
                 scanCallback
             )
-            Log.i(TAG, "scan started")
+            Log.i(TAG, "scan started for idle")
             isScanning = true
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
@@ -95,7 +96,6 @@ class BluetoothManager private constructor(context: Context) {
     fun stopScan(callback: ScanCallback) {
         try {
             if (isScanning) {
-                bluetoothAdapter.bluetoothLeScanner.flushPendingScanResults(callback)
                 bluetoothAdapter.bluetoothLeScanner.stopScan(callback)
                 Log.i(TAG, "scan stopped")
                 isScanning = false
@@ -112,7 +112,8 @@ class BluetoothManager private constructor(context: Context) {
     ) {
         try {
             val device = bluetoothAdapter.getRemoteDevice(address)
-            device.connectGatt(context, false, bluetoothGattCallback)
+            device.connectGatt(context, false, bluetoothGattCallback, BluetoothDevice.TRANSPORT_LE,
+                BluetoothDevice.PHY_LE_1M_MASK or BluetoothDevice.PHY_LE_2M_MASK)
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }
@@ -144,41 +145,30 @@ class BluetoothManager private constructor(context: Context) {
         }
     }
 
-    fun writeTime(gatt: BluetoothGatt, time: ByteArray) {
-        try {
-            val characteristic = gatt.getService(UUID.fromString(WRITE_TIME_SERVICE))
-                ?.getCharacteristic(UUID.fromString(WRITE_TIME_CHARACTERISTIC))
-                ?: error("Characteristic should be present in device")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                gatt.writeCharacteristic(
-                    characteristic,
-                    time,
-                    BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-                )
-
-            } else {
-                @Suppress("DEPRECATION")
-                characteristic.setValue(time)
-                @Suppress("DEPRECATION")
-                gatt.writeCharacteristic(characteristic)
-            }
-        } catch (error: SecurityException) {
-            error("Scan is only allowed if app has needed permissions")
-        }
-    }
-
     fun closeGatt(gatt: BluetoothGatt) {
         try {
+            gatt.disconnect()
+            refresh(gatt)
             gatt.close()
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }
     }
 
+    fun refresh(gatt: BluetoothGatt) {
+        try {
+            // BluetoothGatt gatt
+            val refresh: Method = gatt.javaClass.getMethod("refresh")
+            //noinspection ConstantConditions
+            val success = refresh.invoke(gatt) as Boolean
+            Log.i(TAG, "Refreshing result: $success")
+        } catch (e: Exception) {
+            Log.i(TAG, "error")
+        }
+    }
+
     companion object {
         private const val TAG = "BluetoothManager"
-
-        const val SCAN_REPORT_DELAY_MS = 10000L
 
         const val HEART_RATE_SERVICE_UUID = "0000180D-0000-1000-8000-00805F9B34FB"
 

@@ -39,20 +39,23 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                 status: Int,
                 newState: Int
             ) {
-                when (newState) {
-                    BluetoothProfile.STATE_CONNECTED -> {
-                        Log.i(TAG, "Connected to Gatt")
-                        applicationContext.logViewModel.append("Connected to Gatt")
-                        BluetoothManager.getDefaultInstance().discoverServices(gatt)
-                    }
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    when (newState) {
+                        BluetoothProfile.STATE_CONNECTED -> {
+                            Log.i(TAG, "Connected to Gatt")
+                            applicationContext.logViewModel.append("Connected to Gatt")
+                            BluetoothManager.getDefaultInstance().discoverServices(gatt)
+                        }
 
-                    BluetoothProfile.STATE_DISCONNECTED -> {
-                        Log.i(TAG, "Disconnected from Gatt")
-                        applicationContext.logViewModel.append("Disconnected from Gatt")
-                        if (this@SendRequestWorker::disconnectContinuation.isInitialized) {
+                        BluetoothProfile.STATE_DISCONNECTED -> {
+                            Log.i(TAG, "Disconnected from Gatt")
+                            BluetoothManager.getDefaultInstance().closeGatt(gatt)
+                            applicationContext.logViewModel.append("Disconnected from Gatt")
                             disconnectContinuation.resume(ContinuationResult.Success(gatt))
                         }
                     }
+                } else {
+                    BluetoothManager.getDefaultInstance().closeGatt(gatt)
                 }
             }
 
@@ -103,16 +106,11 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
 
             is ContinuationResult.Success -> {
                 delay(10000L)
-                val disconnectResult = suspendCancellableCoroutine { continuation ->
+                suspendCancellableCoroutine { continuation ->
                     this.disconnectContinuation = continuation
                     BluetoothManager.getDefaultInstance().disconnectDevice(result.gatt)
                 }
-                if(disconnectResult is ContinuationResult.Success) {
-                    BluetoothManager.getDefaultInstance().closeGatt(result.gatt)
-                    Log.i(TAG, "Gatt closed")
-                    applicationContext.logViewModel.append("Gatt closed")
-                    delay(5000L)
-                }
+                delay(1000L)
                 makeRequest()
             }
         }

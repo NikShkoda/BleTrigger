@@ -17,46 +17,22 @@ import com.solvek.bletrigger.worker.SendRequestWorker
 const val TAG = "BluetoothManager"
 const val BLE_WORK_CONNECT = "BLE_WORK_CONNECT"
 
-fun onFound(context: Context, scanResult: ScanResult) {
+fun onFound(context: Context, scanResult: ScanResult, hasData: Boolean) {
     if (context.logViewModel.isConnectionEnabled()) {
-        context.handleScanResult(context, scanResult)
+        context.handleScanResult(context, scanResult, hasData)
     }
 }
 
 private fun Context.handleScanResult(
     context: Context,
-    scanResult: ScanResult
+    scanResult: ScanResult,
+    hasData: Boolean
 ) {
-    val address = scanResult.device.address.replace(":", "")
-    Log.i(TAG, "Handling scan result $address")
-    val sr = scanResult.scanRecord
-    if (sr == null) {
-        Log.w(TAG, "No scan record")
-        return
-    }
-    val md = sr.manufacturerSpecificData
-    if (md.size != 1) {
-        Log.w(
-            TAG,
-            "Manufacturer data contains ${md.size} item. Exactly one is expected"
-        )
-        return
-    }
-
-    Log.i(TAG, "Manufacturer data key: ${md.keyAt(0)}")
-    val bytes = md.valueAt(0)
-
-    if (bytes.size != 8) {
-        Log.e(TAG, "Provided data must contain exactly 8 bytes")
-        return
-    }
-
-    val hasData = bytes[6].toInt() != 0 || bytes[7].toInt() != 0
     if (hasData) {
         createSendRequestWork(context, scanResult.device.address)
     }
     Log.i(TAG, "Has data status: $hasData")
-    logViewModel.onDevice(address, hasData)
+    logViewModel.onDevice(scanResult.device.address, hasData)
 }
 
 private fun createSendRequestWork(context: Context, address: String) {

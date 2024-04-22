@@ -26,7 +26,6 @@ import com.solvek.bletrigger.utils.onFound
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -41,9 +40,6 @@ class ScannerForegroundService : Service() {
     private lateinit var powerManager: PowerManager
     private lateinit var callback: ScanCallback
 
-    // A bit of a hack, but no other way really to stop scan in time
-    private var isDeviceFound = false
-
     @SuppressLint("MissingPermission")
     override fun onCreate() {
         super.onCreate()
@@ -52,22 +48,19 @@ class ScannerForegroundService : Service() {
         callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 super.onScanResult(callbackType, result)
-                if (!isDeviceFound) {
-                    scope.launch {
-                        BluetoothManager.getDefaultInstance().stopScan(callback)
-                        delay(10000)
-                    }
-                    onFound(applicationContext, result)
-                    isDeviceFound = true
-                }
+                onFound(
+                    applicationContext,
+                    result,
+                    hasData = applicationContext.logViewModel.getState() == LogViewModel.STATE.STATE_IDLE
+                )
+                BluetoothManager.getDefaultInstance().stopScan(callback)
             }
         }
         scope.launch {
             applicationContext.logViewModel.state.collectLatest { state ->
-                isDeviceFound = when (state) {
+                when (state) {
                     LogViewModel.STATE.STATE_IDLE -> {
                         BluetoothManager.getDefaultInstance().scanForData(callback)
-                        false
                     }
 
                     LogViewModel.STATE.STATE_DATA -> {
@@ -78,7 +71,6 @@ class ScannerForegroundService : Service() {
                                     BluetoothManager.getDefaultInstance().scanForIdle(callback)
                                 }
                             }
-                        false
                     }
                 }
             }
