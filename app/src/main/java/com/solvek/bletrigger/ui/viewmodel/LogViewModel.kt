@@ -52,8 +52,6 @@ class LogViewModel(context: Context) {
     fun onDevice(id: String, hasData: Boolean) {
         if(_state.value == STATE.STATE_IDLE && hasData) {
             _state.value = STATE.STATE_DATA
-        } else if(_state.value == STATE.STATE_DATA && !hasData) {
-            _state.value = STATE.STATE_IDLE
         }
         if (registry.isSameStatus(id, hasData)) {
             return
@@ -72,6 +70,7 @@ class LogViewModel(context: Context) {
 
     fun onState(state: STATE) {
         _state.value = state
+        append("State became: ${state.name}")
         prefs.edit().putInt(KEY_STATE, state.ordinal).apply()
     }
 

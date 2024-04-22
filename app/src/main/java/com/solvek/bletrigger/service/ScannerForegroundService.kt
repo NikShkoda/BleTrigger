@@ -68,7 +68,7 @@ class ScannerForegroundService : Service() {
                             .getWorkInfosForUniqueWorkFlow(BLE_WORK_CONNECT)
                             .collectLatest { result ->
                                 if (result.all { it.state == WorkInfo.State.SUCCEEDED }) {
-                                    BluetoothManager.getDefaultInstance().scanForIdle(callback)
+                                    applicationContext.logViewModel.onState(LogViewModel.STATE.STATE_IDLE)
                                 }
                             }
                     }
