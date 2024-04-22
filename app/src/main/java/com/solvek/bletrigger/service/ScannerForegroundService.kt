@@ -14,14 +14,20 @@ import android.os.Binder
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.solvek.bletrigger.R
+import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
 import com.solvek.bletrigger.manager.BluetoothManager
 import com.solvek.bletrigger.ui.activity.MainActivity
+import com.solvek.bletrigger.ui.viewmodel.LogViewModel
+import com.solvek.bletrigger.utils.BLE_WORK_CONNECT
 import com.solvek.bletrigger.utils.onFound
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class ScannerForegroundService : Service() {
@@ -33,26 +39,50 @@ class ScannerForegroundService : Service() {
 
     private lateinit var notificationManager: NotificationManager
     private lateinit var powerManager: PowerManager
+    private lateinit var callback: ScanCallback
+
+    // A bit of a hack, but no other way really to stop scan in time
+    private var isDeviceFound = false
 
     @SuppressLint("MissingPermission")
     override fun onCreate() {
         super.onCreate()
 
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        val callback = object : ScanCallback() {
+        callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 super.onScanResult(callbackType, result)
-                onFound(applicationContext, result) {}
-                scope.launch {
-                    BluetoothManager.getDefaultInstance().stopScanWithCallback()
-                    delay(15000L)
-                    BluetoothManager.getDefaultInstance().startScanWithCallback(applicationContext)
+                if (!isDeviceFound) {
+                    scope.launch {
+                        BluetoothManager.getDefaultInstance().stopScan(callback)
+                        delay(10000)
+                    }
+                    onFound(applicationContext, result)
+                    isDeviceFound = true
                 }
             }
         }
-        BluetoothManager.getDefaultInstance()
-            .startScanWithCallback(applicationContext, callback)
+        scope.launch {
+            applicationContext.logViewModel.state.collectLatest { state ->
+                isDeviceFound = when (state) {
+                    LogViewModel.STATE.STATE_IDLE -> {
+                        BluetoothManager.getDefaultInstance().scanForData(callback)
+                        false
+                    }
+
+                    LogViewModel.STATE.STATE_DATA -> {
+                        WorkManager.getInstance(applicationContext)
+                            .getWorkInfosForUniqueWorkFlow(BLE_WORK_CONNECT)
+                            .collectLatest { result ->
+                                if (result.all { it.state == WorkInfo.State.SUCCEEDED }) {
+                                    BluetoothManager.getDefaultInstance().scanForIdle(callback)
+                                }
+                            }
+                        false
+                    }
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {

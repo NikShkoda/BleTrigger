@@ -12,22 +12,20 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
-import com.solvek.bletrigger.ui.viewmodel.LogViewModel
 import com.solvek.bletrigger.worker.SendRequestWorker
 
-const val TAG = "DataHandler"
-const val BLE_WORK = "BLE_WORK"
+const val TAG = "BluetoothManager"
+const val BLE_WORK_CONNECT = "BLE_WORK_CONNECT"
 
-fun onFound(context: Context, scanResult: ScanResult, onDeviceFound: () -> Unit) {
+fun onFound(context: Context, scanResult: ScanResult) {
     if (context.logViewModel.isConnectionEnabled()) {
-        context.handleScanResult(context, scanResult, onDeviceFound)
+        context.handleScanResult(context, scanResult)
     }
 }
 
 private fun Context.handleScanResult(
     context: Context,
-    scanResult: ScanResult,
-    onDeviceFound: () -> Unit
+    scanResult: ScanResult
 ) {
     val address = scanResult.device.address.replace(":", "")
     Log.i(TAG, "Handling scan result $address")
@@ -54,8 +52,7 @@ private fun Context.handleScanResult(
     }
 
     val hasData = bytes[6].toInt() != 0 || bytes[7].toInt() != 0
-    if(hasData) {
-        onDeviceFound()
+    if (hasData) {
         createSendRequestWork(context, scanResult.device.address)
     }
     Log.i(TAG, "Has data status: $hasData")
@@ -76,5 +73,5 @@ private fun createSendRequestWork(context: Context, address: String) {
             .build()
     WorkManager
         .getInstance(context)
-        .enqueueUniqueWork(BLE_WORK, ExistingWorkPolicy.KEEP, uploadWorkRequest)
+        .enqueueUniqueWork(BLE_WORK_CONNECT, ExistingWorkPolicy.KEEP, uploadWorkRequest)
 }

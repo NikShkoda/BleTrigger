@@ -50,6 +50,11 @@ class LogViewModel(context: Context) {
     }
 
     fun onDevice(id: String, hasData: Boolean) {
+        if(_state.value == STATE.STATE_IDLE && hasData) {
+            _state.value = STATE.STATE_DATA
+        } else if(_state.value == STATE.STATE_DATA && !hasData) {
+            _state.value = STATE.STATE_IDLE
+        }
         if (registry.isSameStatus(id, hasData)) {
             return
         }
@@ -105,6 +110,6 @@ class LogViewModel(context: Context) {
     }
 
     enum class STATE {
-        STATE_IDLE, STATE_CONNECTED;
+        STATE_IDLE, STATE_DATA;
     }
 }
