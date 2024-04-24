@@ -112,8 +112,7 @@ class BluetoothManager private constructor(context: Context) {
     ) {
         try {
             val device = bluetoothAdapter.getRemoteDevice(address)
-            device.connectGatt(context, false, bluetoothGattCallback, BluetoothDevice.TRANSPORT_LE,
-                BluetoothDevice.PHY_LE_1M_MASK or BluetoothDevice.PHY_LE_2M_MASK)
+            device.connectGatt(context, false, bluetoothGattCallback)
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }
@@ -135,11 +134,12 @@ class BluetoothManager private constructor(context: Context) {
         }
     }
 
-    fun readTime(gatt: BluetoothGatt) {
+    fun readTime(gatt: BluetoothGatt): Boolean {
         try {
             val characteristic = gatt.getService(UUID.fromString(READ_TIME_SERVICE))
                 ?.getCharacteristic(UUID.fromString(READ_TIME_CHARACTERISTIC))
-            gatt.readCharacteristic(characteristic)
+
+            return gatt.readCharacteristic(characteristic)
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }
@@ -155,7 +155,7 @@ class BluetoothManager private constructor(context: Context) {
         }
     }
 
-    fun refresh(gatt: BluetoothGatt) {
+    private fun refresh(gatt: BluetoothGatt) {
         try {
             // BluetoothGatt gatt
             val refresh: Method = gatt.javaClass.getMethod("refresh")

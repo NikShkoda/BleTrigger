@@ -45,12 +45,14 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                             Log.i(TAG, "Connected to Gatt")
                             applicationContext.logViewModel.append("Connected to Gatt")
                             BluetoothManager.getDefaultInstance().discoverServices(gatt)
+                            applicationContext.logViewModel.append("Start to discover services")
                         }
 
                         BluetoothProfile.STATE_DISCONNECTED -> {
                             Log.i(TAG, "Disconnected from Gatt")
-                            BluetoothManager.getDefaultInstance().closeGatt(gatt)
                             applicationContext.logViewModel.append("Disconnected from Gatt")
+                            BluetoothManager.getDefaultInstance().closeGatt(gatt)
+                            applicationContext.logViewModel.append("Closing Gatt")
                             disconnectContinuation.resume(ContinuationResult.Success(gatt))
                         }
                     }
@@ -61,31 +63,48 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
 
             override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
                 super.onServicesDiscovered(gatt, status)
-                BluetoothManager.getDefaultInstance().readTime(gatt)
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    applicationContext.logViewModel.append("Services were discovered!")
+                    if (BluetoothManager.getDefaultInstance().readTime(gatt)) {
+                        applicationContext.logViewModel.append("Characteristic reading started!")
+                    } else {
+                        applicationContext.logViewModel.append("Characteristic reading can't be started!")
+                    }
+                } else {
+                    applicationContext.logViewModel.append("Services were not discovered! Error status is ${status}")
+                }
             }
 
+
+            // Other version did not work on some devices
+            @Suppress("DEPRECATION")
+            @Deprecated("Deprecated in Java")
             override fun onCharacteristicRead(
                 gatt: BluetoothGatt,
                 characteristic: BluetoothGattCharacteristic,
-                value: ByteArray,
                 status: Int
             ) {
-                super.onCharacteristicRead(gatt, characteristic, value, status)
-                if (characteristic.uuid == UUID.fromString(BluetoothManager.READ_TIME_CHARACTERISTIC)) {
-                    val buffer = ByteBuffer.wrap(value)
-                    val deviceTime = buffer.getTime()
-                    applicationContext.logViewModel.append(
-                        "Patch time is: ${
-                            applicationContext.logViewModel.formatTime(
-                                deviceTime
-                            )
-                        }\nAndroid device time is: ${
-                            applicationContext.logViewModel.formatTime(
-                                System.currentTimeMillis()
-                            )
-                        }"
-                    )
-                    connectContinuation.resume(ContinuationResult.Success(gatt))
+                super.onCharacteristicRead(gatt, characteristic, status)
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    applicationContext.logViewModel.append("Characteristic was read properly! UUID is :${characteristic.uuid}")
+                    if (characteristic.uuid == UUID.fromString(BluetoothManager.READ_TIME_CHARACTERISTIC)) {
+                        val buffer = ByteBuffer.wrap(characteristic.value)
+                        val deviceTime = buffer.getTime()
+                        applicationContext.logViewModel.append(
+                            "Patch time is: ${
+                                applicationContext.logViewModel.formatTime(
+                                    deviceTime
+                                )
+                            }\nAndroid device time is: ${
+                                applicationContext.logViewModel.formatTime(
+                                    System.currentTimeMillis()
+                                )
+                            }"
+                        )
+                        connectContinuation.resume(ContinuationResult.Success(gatt))
+                    }
+                } else {
+                    applicationContext.logViewModel.append("Can't read characteristic! Error status is $status")
                 }
             }
         }
@@ -108,6 +127,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                 delay(10000L)
                 suspendCancellableCoroutine { continuation ->
                     this.disconnectContinuation = continuation
+                    applicationContext.logViewModel.append("Disconnect initialized")
                     BluetoothManager.getDefaultInstance().disconnectDevice(result.gatt)
                 }
                 delay(1000L)
