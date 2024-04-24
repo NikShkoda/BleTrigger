@@ -37,8 +37,8 @@ class ScannerForegroundService : Service() {
     private val localBinder = LocalBinder()
 
     private lateinit var notificationManager: NotificationManager
-    private lateinit var powerManager: PowerManager
     private lateinit var callback: ScanCallback
+    private lateinit var idleScanCallback: ScanCallback
 
     @SuppressLint("MissingPermission")
     override fun onCreate() {
@@ -51,15 +51,30 @@ class ScannerForegroundService : Service() {
                 onFound(
                     applicationContext,
                     result,
-                    hasData = applicationContext.logViewModel.getState() == LogViewModel.STATE.STATE_IDLE
+                    hasData = true
                 )
+                applicationContext.logViewModel.append("Scanner stopped")
                 BluetoothManager.getDefaultInstance().stopScan(callback)
+                BluetoothManager.getDefaultInstance().scanForIdle(idleScanCallback)
             }
         }
+        idleScanCallback = object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
+                super.onScanResult(callbackType, result)
+                onFound(
+                    applicationContext,
+                    result,
+                    hasData = false
+                )
+                BluetoothManager.getDefaultInstance().stopScan(idleScanCallback)
+            }
+        }
+        BluetoothManager.getDefaultInstance().scanForIdle(idleScanCallback)
         scope.launch {
             applicationContext.logViewModel.state.collectLatest { state ->
                 when (state) {
                     LogViewModel.STATE.STATE_IDLE -> {
+                        applicationContext.logViewModel.append("Scanner started")
                         BluetoothManager.getDefaultInstance().scanForData(callback)
                     }
 

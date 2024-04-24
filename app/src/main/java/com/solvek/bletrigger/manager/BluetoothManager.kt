@@ -55,9 +55,10 @@ class BluetoothManager private constructor(context: Context) {
 
     private val settings by lazy {
         ScanSettings.Builder()
-            .setLegacy(true)
+            .setLegacy(false)
             .setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH)
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
             .build()
     }
 
@@ -172,7 +173,7 @@ class BluetoothManager private constructor(context: Context) {
 
         const val HEART_RATE_SERVICE_UUID = "0000180D-0000-1000-8000-00805F9B34FB"
 
-        const val READ_TIME_SERVICE = "92fc3961-6a47-43d4-82b0-4677de96378b"
+            const val READ_TIME_SERVICE = "92fc3961-6a47-43d4-82b0-4677de96378b"
         const val READ_TIME_CHARACTERISTIC = "a4e232e7-5ab0-4687-bddd-f1349c68247e"
 
         const val WRITE_TIME_SERVICE = "c8050aac-b8cd-4e7e-8498-3b45b8642ae0"

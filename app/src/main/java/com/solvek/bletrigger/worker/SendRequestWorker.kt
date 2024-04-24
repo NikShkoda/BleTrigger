@@ -42,17 +42,16 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     when (newState) {
                         BluetoothProfile.STATE_CONNECTED -> {
-                            Log.i(TAG, "Connected to Gatt")
-                            applicationContext.logViewModel.append("Connected to Gatt")
+                            Log.i(TAG, "Connected to patch")
+                            applicationContext.logViewModel.append("Connected to patch")
                             BluetoothManager.getDefaultInstance().discoverServices(gatt)
-                            applicationContext.logViewModel.append("Start to discover services")
+                            applicationContext.logViewModel.append("Start to discover time service")
                         }
 
                         BluetoothProfile.STATE_DISCONNECTED -> {
-                            Log.i(TAG, "Disconnected from Gatt")
-                            applicationContext.logViewModel.append("Disconnected from Gatt")
+                            Log.i(TAG, "Disconnected from patch")
+                            applicationContext.logViewModel.append("Disconnected from patch")
                             BluetoothManager.getDefaultInstance().closeGatt(gatt)
-                            applicationContext.logViewModel.append("Closing Gatt")
                             disconnectContinuation.resume(ContinuationResult.Success(gatt))
                         }
                     }
@@ -64,14 +63,14 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
                 super.onServicesDiscovered(gatt, status)
                 if (status == BluetoothGatt.GATT_SUCCESS) {
-                    applicationContext.logViewModel.append("Services were discovered!")
+                    applicationContext.logViewModel.append("Time service found!")
                     if (BluetoothManager.getDefaultInstance().readTime(gatt)) {
-                        applicationContext.logViewModel.append("Characteristic reading started!")
+                        applicationContext.logViewModel.append("Reading time started!")
                     } else {
-                        applicationContext.logViewModel.append("Characteristic reading can't be started!")
+                        applicationContext.logViewModel.append("Reading time can't be started!")
                     }
                 } else {
-                    applicationContext.logViewModel.append("Services were not discovered! Error status is ${status}")
+                    applicationContext.logViewModel.append("Time service was not discovered! Error status is ${status}")
                 }
             }
 
@@ -86,7 +85,6 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             ) {
                 super.onCharacteristicRead(gatt, characteristic, status)
                 if (status == BluetoothGatt.GATT_SUCCESS) {
-                    applicationContext.logViewModel.append("Characteristic was read properly! UUID is :${characteristic.uuid}")
                     if (characteristic.uuid == UUID.fromString(BluetoothManager.READ_TIME_CHARACTERISTIC)) {
                         val buffer = ByteBuffer.wrap(characteristic.value)
                         val deviceTime = buffer.getTime()
@@ -124,10 +122,10 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             }
 
             is ContinuationResult.Success -> {
-                delay(10000L)
+                applicationContext.logViewModel.append("Waiting 20 seconds before disconnecting from the patch")
+                delay(20000L)
                 suspendCancellableCoroutine { continuation ->
                     this.disconnectContinuation = continuation
-                    applicationContext.logViewModel.append("Disconnect initialized")
                     BluetoothManager.getDefaultInstance().disconnectDevice(result.gatt)
                 }
                 delay(1000L)
@@ -154,14 +152,14 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
 
     private suspend fun makeRequest() {
         withContext(Dispatchers.IO) {
-            applicationContext.logViewModel.append("Request started")
             val url = URL("https://google.com")
             val conn = url.openConnection() as HttpURLConnection
             try {
                 conn.connect()
+                applicationContext.logViewModel.append("Request to ${url} started")
                 val httpResponse = conn.getResponseCode()
                 Log.i(TAG, "Request to $url was made with response : ${httpResponse}")
-                applicationContext.logViewModel.append("Request finished successfuly")
+                applicationContext.logViewModel.append("Request to $url was made with response : ${httpResponse}")
             } catch (error: Throwable) {
                 Log.e(TAG, error.message ?: "Unknown error")
             }

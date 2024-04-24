@@ -50,7 +50,12 @@ class LogViewModel(context: Context) {
     }
 
     fun onDevice(id: String, hasData: Boolean) {
-        if(_state.value == STATE.STATE_IDLE && hasData) {
+        if (hasData) {
+            append("$id is advertising 0100")
+        } else {
+            append("$id is advertising 0000")
+        }
+        if(hasData) {
             _state.value = STATE.STATE_DATA
         }
         if (registry.isSameStatus(id, hasData)) {
@@ -60,17 +65,10 @@ class LogViewModel(context: Context) {
         registry.store(id, hasData)
 
         prefs.edit().putString(KEY_REGISTRY, registry.toJson()).apply()
-
-        if (hasData) {
-            append("$id HAS data")
-        } else {
-            append("$id does NOT have data")
-        }
     }
 
     fun onState(state: STATE) {
         _state.value = state
-        append("State became: ${state.name}")
         prefs.edit().putInt(KEY_STATE, state.ordinal).apply()
     }
 

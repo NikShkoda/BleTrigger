@@ -49,5 +49,5 @@ private fun createSendRequestWork(context: Context, address: String) {
             .build()
     WorkManager
         .getInstance(context)
-        .enqueueUniqueWork(BLE_WORK_CONNECT, ExistingWorkPolicy.KEEP, uploadWorkRequest)
+        .enqueueUniqueWork(BLE_WORK_CONNECT, ExistingWorkPolicy.APPEND, uploadWorkRequest)
 }
