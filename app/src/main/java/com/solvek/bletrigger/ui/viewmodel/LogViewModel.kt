@@ -38,7 +38,7 @@ class LogViewModel(context: Context) {
     init {
         _log.value = prefs.getString(KEY_LOG, LOG_DEF_VALUE) ?: LOG_DEF_VALUE
         _connectionEnabled.value = prefs.getBoolean(KEY_CONNECTION_ENABLED, true)
-        _state.value = STATE.entries[prefs.getInt(KEY_STATE, STATE.STATE_IDLE.ordinal)]
+        _state.value = STATE.STATE_IDLE
     }
 
     fun isConnectionEnabled(): Boolean {
@@ -51,15 +51,16 @@ class LogViewModel(context: Context) {
 
     fun onDevice(id: String, hasData: Boolean) {
         if (hasData) {
-            append("$id is advertising 0100")
-        } else {
-            append("$id is advertising 0000")
-        }
-        if(hasData) {
             _state.value = STATE.STATE_DATA
         }
         if (registry.isSameStatus(id, hasData)) {
             return
+        }
+
+        if (hasData) {
+            append("$id is advertising 0100")
+        } else {
+            append("$id is advertising 0000")
         }
 
         registry.store(id, hasData)
@@ -69,7 +70,6 @@ class LogViewModel(context: Context) {
 
     fun onState(state: STATE) {
         _state.value = state
-        prefs.edit().putInt(KEY_STATE, state.ordinal).apply()
     }
 
     fun append(message: String) {
@@ -78,7 +78,7 @@ class LogViewModel(context: Context) {
         update(if (c.isBlank() || c == LOG_DEF_VALUE) row else "$c\r\n$row")
     }
 
-    fun formatTime(timeMs: Long) : String {
+    fun formatTime(timeMs: Long): String {
         return TIME_FORMAT.format(timeMs)
     }
 
@@ -102,7 +102,6 @@ class LogViewModel(context: Context) {
         private const val KEY_CONNECTION_ENABLED = "connection_enabled"
         private const val KEY_HAVE_BT_PERMISSION = "have_bt_permissions"
         private const val KEY_REGISTRY = "registry"
-        private const val KEY_STATE = "state"
         private val TIME_FORMAT = SimpleDateFormat.getDateTimeInstance()
     }
 

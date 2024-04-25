@@ -12,7 +12,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
-import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -28,6 +27,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class ScannerForegroundService : Service() {
 
@@ -35,10 +36,13 @@ class ScannerForegroundService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + job)
 
     private val localBinder = LocalBinder()
+    private val lock = Mutex()
 
     private lateinit var notificationManager: NotificationManager
     private lateinit var callback: ScanCallback
-    private lateinit var idleScanCallback: ScanCallback
+
+    private var isDeviceFound = false
+    private var isFirstTime = true
 
     @SuppressLint("MissingPermission")
     override fun onCreate() {
@@ -48,28 +52,22 @@ class ScannerForegroundService : Service() {
         callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 super.onScanResult(callbackType, result)
-                onFound(
-                    applicationContext,
-                    result,
-                    hasData = true
-                )
-                applicationContext.logViewModel.append("Scanner stopped")
-                BluetoothManager.getDefaultInstance().stopScan(callback)
-                BluetoothManager.getDefaultInstance().scanForIdle(idleScanCallback)
+                scope.launch {
+                    lock.withLock {
+                        if (!isDeviceFound) {
+                            onFound(
+                                applicationContext,
+                                result
+                            ) {
+                                isDeviceFound = true
+                                BluetoothManager.getDefaultInstance().stopScan(callback)
+                                applicationContext.logViewModel.append("Scanner stopped")
+                            }
+                        }
+                    }
+                }
             }
         }
-        idleScanCallback = object : ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: ScanResult) {
-                super.onScanResult(callbackType, result)
-                onFound(
-                    applicationContext,
-                    result,
-                    hasData = false
-                )
-                BluetoothManager.getDefaultInstance().stopScan(idleScanCallback)
-            }
-        }
-        BluetoothManager.getDefaultInstance().scanForIdle(idleScanCallback)
         scope.launch {
             applicationContext.logViewModel.state.collectLatest { state ->
                 when (state) {
@@ -84,6 +82,7 @@ class ScannerForegroundService : Service() {
                             .collectLatest { result ->
                                 if (result.all { it.state == WorkInfo.State.SUCCEEDED }) {
                                     applicationContext.logViewModel.onState(LogViewModel.STATE.STATE_IDLE)
+                                    isDeviceFound = false
                                 }
                             }
                     }

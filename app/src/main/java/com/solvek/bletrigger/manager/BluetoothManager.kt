@@ -29,11 +29,11 @@ class BluetoothManager private constructor(context: Context) {
         mutableListOf<ScanFilter>().apply {
             val filterShortServiceUUID = ScanFilter.Builder()
                 .setServiceUuid(ParcelUuid.fromString(HEART_RATE_SERVICE_UUID))
-                .setManufacturerData(
+                /*.setManufacturerData(
                     2957,
                     byteArrayOf(0, 0, 0, 0, 0, 0, 0, 0),
                     byteArrayOf(0, 0, 0, 0, 0, 0, 1, 1)
-                )
+                )*/
                 .build()
             add(filterShortServiceUUID)
         }
@@ -43,11 +43,11 @@ class BluetoothManager private constructor(context: Context) {
         mutableListOf<ScanFilter>().apply {
             val filterShortServiceUUID = ScanFilter.Builder()
                 .setServiceUuid(ParcelUuid.fromString(HEART_RATE_SERVICE_UUID))
-                .setManufacturerData(
+                /*.setManufacturerData(
                     2957,
                     byteArrayOf(0, 0, 0, 0, 0, 0, 1, 0),
                     byteArrayOf(0, 0, 0, 0, 0, 0, 1, 1)
-                )
+                )*/
                 .build()
             add(filterShortServiceUUID)
         }
@@ -56,7 +56,7 @@ class BluetoothManager private constructor(context: Context) {
     private val settings by lazy {
         ScanSettings.Builder()
             .setLegacy(false)
-            .setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH)
+            //.setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH)
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
             .build()
