@@ -42,7 +42,7 @@ class ScannerForegroundService : Service() {
     private lateinit var callback: ScanCallback
 
     private var isDeviceFound = false
-    private var isFirstTime = true
+    private var numberOfAttempts: Int = 0
 
     @SuppressLint("MissingPermission")
     override fun onCreate() {
@@ -58,10 +58,19 @@ class ScannerForegroundService : Service() {
                             onFound(
                                 applicationContext,
                                 result
-                            ) {
-                                isDeviceFound = true
-                                BluetoothManager.getDefaultInstance().stopScan(callback)
-                                applicationContext.logViewModel.append("Scanner stopped")
+                            ) { hasData ->
+                                if(hasData) {
+                                    numberOfAttempts ++
+                                    isDeviceFound = true
+                                    BluetoothManager.getDefaultInstance().stopScan(callback)
+                                    applicationContext.logViewModel.append("Scanner stopped")
+                                    applicationContext.logViewModel.append("Setting device data flag to 0000, attempt number $numberOfAttempts")
+                                } else {
+                                    if(numberOfAttempts > 0) {
+                                        numberOfAttempts = 0
+                                        applicationContext.logViewModel.append("Resetting number of attempts to 0")
+                                    }
+                                }
                             }
                         }
                     }

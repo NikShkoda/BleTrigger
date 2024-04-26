@@ -17,16 +17,16 @@ import com.solvek.bletrigger.worker.SendRequestWorker
 const val TAG = "BluetoothManager"
 const val BLE_WORK_CONNECT = "BLE_WORK_CONNECT"
 
-fun onFound(context: Context, scanResult: ScanResult, onHasData: () -> Unit) {
+fun onFound(context: Context, scanResult: ScanResult, onResult: (hasData: Boolean) -> Unit) {
     if (context.logViewModel.isConnectionEnabled()) {
-        context.handleScanResult(context, scanResult, onHasData)
+        context.handleScanResult(context, scanResult, onResult)
     }
 }
 
 private fun Context.handleScanResult(
     context: Context,
     scanResult: ScanResult,
-    onHasData: () -> Unit
+    onResult: (hasData: Boolean) -> Unit
 ) {
     val address = scanResult.device.address.replace(":", "")
     Log.i(TAG, "Handling scan result $address")
@@ -51,7 +51,6 @@ private fun Context.handleScanResult(
 
     val hasData = bytes[6].toInt() != 0 || bytes[7].toInt() != 0
     if (hasData) {
-        onHasData()
         WorkManager.getInstance(context)
             .enqueueUniqueWork(
                 BLE_WORK_CONNECT,
@@ -69,6 +68,7 @@ private fun Context.handleScanResult(
     }
     Log.i(TAG, "Has data status: $hasData")
     logViewModel.onDevice(address, hasData)
+    onResult(hasData)
 }
 
 private fun createSendRequestWork(context: Context, address: String) {

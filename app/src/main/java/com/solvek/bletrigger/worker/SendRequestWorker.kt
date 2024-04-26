@@ -39,7 +39,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
 
     @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
-        applicationContext.logViewModel.append("Started a worker")
+        //applicationContext.logViewModel.append("Started a worker")
         val callback = object : BluetoothGattCallback() {
             override fun onConnectionStateChange(
                 gatt: BluetoothGatt,
@@ -50,15 +50,16 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                     when (newState) {
                         BluetoothProfile.STATE_CONNECTED -> {
                             Log.i(TAG, "Connected to patch")
-                            applicationContext.logViewModel.append("Connected to patch")
-                            BluetoothManager.getDefaultInstance().discoverServices(gatt)
-                            applicationContext.logViewModel.append("Start to discover time service")
+                            //applicationContext.logViewModel.append("Connected to patch")
+                            connectContinuation.resume(ContinuationResult.Success(gatt))
+                            //BluetoothManager.getDefaultInstance().discoverServices(gatt)
+                            //applicationContext.logViewModel.append("Start to discover time service")
                         }
 
                         BluetoothProfile.STATE_DISCONNECTED -> {
                             Log.i(TAG, "Disconnected from patch")
-                            applicationContext.logViewModel.append("Disconnected from patch")
-                            BluetoothManager.getDefaultInstance().closeGatt(gatt)
+                            //applicationContext.logViewModel.append("Disconnected from patch")
+                            //BluetoothManager.getDefaultInstance().closeGatt(gatt)
                             disconnectContinuation.resume(ContinuationResult.Success(gatt))
                         }
                     }
@@ -139,13 +140,13 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                     timeNextCycle.add(Calendar.MINUTE, 1)
                 }
                 var delayToNextCycle = timeNextCycle.timeInMillis - timeNow.timeInMillis
-                if(delayToNextCycle > Duration.ofMinutes(1).toMillis()) {
+                if(delayToNextCycle > Duration.ofMinutes(1).plus(Duration.ofSeconds(20)).toMillis()) {
                     delayToNextCycle = Duration.ofSeconds(10).toMillis()
                 } else {
                     // Add more just in case
                     delayToNextCycle += Duration.ofSeconds(5).toMillis()
                 }
-                applicationContext.logViewModel.append("Waiting ${delayToNextCycle / 1000L} seconds before disconnecting from the patch")
+                //applicationContext.logViewModel.append("Waiting ${delayToNextCycle / 1000L} seconds before disconnecting from the patch")
                 delay(delayToNextCycle)
                 suspendCancellableCoroutine { continuation ->
                     this.disconnectContinuation = continuation
@@ -179,10 +180,10 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             val conn = url.openConnection() as HttpURLConnection
             try {
                 conn.connect()
-                applicationContext.logViewModel.append("Request to ${url} started")
+                //applicationContext.logViewModel.append("Request to ${url} started")
                 val httpResponse = conn.getResponseCode()
                 Log.i(TAG, "Request to $url was made with response : ${httpResponse}")
-                applicationContext.logViewModel.append("Request to $url was made with response : ${httpResponse}")
+                //applicationContext.logViewModel.append("Request to $url was made with response : ${httpResponse}")
             } catch (error: Throwable) {
                 Log.e(TAG, error.message ?: "Unknown error")
             }
