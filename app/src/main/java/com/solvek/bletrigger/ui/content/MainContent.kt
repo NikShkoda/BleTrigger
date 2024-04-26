@@ -14,11 +14,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,6 +32,7 @@ import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.solvek.bletrigger.R
 import com.solvek.bletrigger.ui.theme.Typography
@@ -49,9 +52,19 @@ fun MainContent(
 
         val log by model.log.collectAsState()
         val connectionEnabled by model.connectionEnabled.collectAsState()
+        val timeCalculationsEnabled by model.timeCalculationsEnabled.collectAsState()
+        val delayBetweenAttempts by model.delayBeforeAttempts.collectAsState()
 
         val connectionEnabledChecked = remember {
             mutableStateOf(connectionEnabled)
+        }
+
+        val timeCalculationsEnabledChecked = remember {
+            mutableStateOf(timeCalculationsEnabled)
+        }
+
+        val delayBetweenAttemptsValue = remember {
+            mutableStateOf(delayBetweenAttempts.toString())
         }
 
         Row(
@@ -116,6 +129,49 @@ fun MainContent(
         }
 
         Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = stringResource(id = R.string.text_should_always_work_in_one_attempt),
+                style = Typography.titleMedium
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Switch(
+                checked = timeCalculationsEnabledChecked.value,
+                onCheckedChange = { isChecked ->
+                    timeCalculationsEnabledChecked.value = isChecked
+                    model.setTimeCalculationsEnabled(isChecked)
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = stringResource(id = R.string.text_should_always_work_in_one_attempt),
+                style = Typography.titleMedium
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            TextField(
+                modifier = Modifier.width(36.dp),
+                value = delayBetweenAttemptsValue.value,
+                onValueChange = { numberOfSeconds ->
+                   delayBetweenAttemptsValue.value = numberOfSeconds
+                   model.setConnectionAttemptsDelay(numberOfSeconds.toInt())
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+        }
 
         Box(
             modifier = Modifier

@@ -3,4 +3,6 @@
     <string name="text_device_was_found">Device was Found!\nNext step will be to connect to it</string>
     <string name="text_start_scan_again">Start scan again</string>
     <string name="text_connection_enabled">Should connect and send data:</string>
+    <string name="text_should_always_work_in_one_attempt">Should always work in one attempt:</string>
+    <string name="text_delay_between_attempts">Delay between attempts(in seconds):</string>
 </resources>

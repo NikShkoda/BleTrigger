@@ -130,29 +130,37 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             }
 
             is ContinuationResult.Success -> {
-                val timeNow = Calendar.getInstance()
-                val timeNextCycle = Calendar.getInstance()
-                val currentMinute = timeNow.get(Calendar.MINUTE)
-                val currentSecond = timeNow.get(Calendar.SECOND)
-                val nextCycleMinute = timeCycles.first { minute -> currentMinute < minute }
-                timeNextCycle.add(Calendar.SECOND, 60 - currentSecond)
-                while (timeNextCycle.get(Calendar.MINUTE) != nextCycleMinute) {
-                    timeNextCycle.add(Calendar.MINUTE, 1)
-                }
-                var delayToNextCycle = timeNextCycle.timeInMillis - timeNow.timeInMillis
-                if(delayToNextCycle > Duration.ofMinutes(1).plus(Duration.ofSeconds(20)).toMillis()) {
-                    delayToNextCycle = Duration.ofSeconds(10).toMillis()
+                if (applicationContext.logViewModel.isTimeCalculationEnabled()) {
+                    val timeNow = Calendar.getInstance()
+                    val timeNextCycle = Calendar.getInstance()
+                    val currentMinute = timeNow.get(Calendar.MINUTE)
+                    val currentSecond = timeNow.get(Calendar.SECOND)
+                    val nextCycleMinute = timeCycles.first { minute -> currentMinute < minute }
+                    timeNextCycle.add(Calendar.SECOND, 60 - currentSecond)
+                    while (timeNextCycle.get(Calendar.MINUTE) != nextCycleMinute) {
+                        timeNextCycle.add(Calendar.MINUTE, 1)
+                    }
+                    var delayToNextCycle = timeNextCycle.timeInMillis - timeNow.timeInMillis
+                    if (delayToNextCycle > Duration.ofMinutes(1).plus(Duration.ofSeconds(20))
+                            .toMillis()
+                    ) {
+                        delayToNextCycle = Duration.ofSeconds(10).toMillis()
+                    } else {
+                        // Add more just in case
+                        delayToNextCycle += Duration.ofSeconds(5).toMillis()
+                    }
+                    //applicationContext.logViewModel.append("Waiting ${delayToNextCycle / 1000L} seconds before disconnecting from the patch")
+                    delay(delayToNextCycle)
                 } else {
-                    // Add more just in case
-                    delayToNextCycle += Duration.ofSeconds(5).toMillis()
+                    val delay = applicationContext.logViewModel.getConnectionAttemptsDelay()
+                    if (delay > 0) {
+                        delay(Duration.ofSeconds(delay.toLong()).toMillis())
+                    }
                 }
-                //applicationContext.logViewModel.append("Waiting ${delayToNextCycle / 1000L} seconds before disconnecting from the patch")
-                delay(delayToNextCycle)
                 suspendCancellableCoroutine { continuation ->
                     this.disconnectContinuation = continuation
                     BluetoothManager.getDefaultInstance().disconnectDevice(result.gatt)
                 }
-                delay(1000L)
                 makeRequest()
             }
         }

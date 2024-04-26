@@ -22,6 +22,15 @@ class LogViewModel(context: Context) {
     val connectionEnabled
         get() = _connectionEnabled.asStateFlow()
 
+    private val _timeCalculationsEnabled = MutableStateFlow(false)
+    val timeCalculationsEnabled
+        get() = _timeCalculationsEnabled.asStateFlow()
+
+    private val _delayBeforeAttempts = MutableStateFlow(0)
+    val delayBeforeAttempts
+        get() = _timeCalculationsEnabled.asStateFlow()
+
+
     private val _state = MutableStateFlow(STATE.STATE_IDLE)
     val state
         get() = _state.asStateFlow()
@@ -38,11 +47,36 @@ class LogViewModel(context: Context) {
     init {
         _log.value = prefs.getString(KEY_LOG, LOG_DEF_VALUE) ?: LOG_DEF_VALUE
         _connectionEnabled.value = prefs.getBoolean(KEY_CONNECTION_ENABLED, true)
+        _timeCalculationsEnabled.value = prefs.getBoolean(KEY_TIME_CALCULATIONS_ENABLED, false)
+        _delayBeforeAttempts.value = prefs.getInt(KEY_CONNECTION_ATTEMPTS_DELAY, 0)
         _state.value = STATE.STATE_IDLE
     }
 
     fun isConnectionEnabled(): Boolean {
         return _connectionEnabled.value
+    }
+
+    fun setConnectionEnabled(enabled: Boolean) {
+        _connectionEnabled.value = enabled
+        prefs.edit().putBoolean(KEY_CONNECTION_ENABLED, enabled).apply()
+    }
+
+    fun isTimeCalculationEnabled(): Boolean {
+        return _timeCalculationsEnabled.value
+    }
+
+    fun setTimeCalculationsEnabled(enabled: Boolean) {
+        _timeCalculationsEnabled.value = enabled
+        prefs.edit().putBoolean(KEY_TIME_CALCULATIONS_ENABLED, enabled).apply()
+    }
+
+    fun getConnectionAttemptsDelay(): Int {
+        return _delayBeforeAttempts.value
+    }
+
+    fun setConnectionAttemptsDelay(delay: Int) {
+        _delayBeforeAttempts.value = delay
+        prefs.edit().putInt(KEY_CONNECTION_ATTEMPTS_DELAY, delay).apply()
     }
 
     fun getState(): STATE {
@@ -58,9 +92,9 @@ class LogViewModel(context: Context) {
         }
 
         if (hasData) {
-            append("$id is advertising 0100")
+            append("Detected 0100")
         } else {
-            append("$id is advertising 0000")
+            append("Detected 0000")
         }
 
         registry.store(id, hasData)
@@ -86,10 +120,6 @@ class LogViewModel(context: Context) {
         update(LOG_DEF_VALUE)
     }
 
-    fun setConnectionEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_CONNECTION_ENABLED, enabled).apply()
-    }
-
     private fun update(logContent: String) {
         _log.value = logContent
         prefs.edit().putString(KEY_LOG, logContent).apply()
@@ -100,6 +130,8 @@ class LogViewModel(context: Context) {
         private const val REGISTRY_DEF_VALUE = "{}"
         private const val KEY_LOG = "log_content"
         private const val KEY_CONNECTION_ENABLED = "connection_enabled"
+        private const val KEY_TIME_CALCULATIONS_ENABLED = "time_calculations_enabled"
+        private const val KEY_CONNECTION_ATTEMPTS_DELAY = "connection_attempts_delay"
         private const val KEY_HAVE_BT_PERMISSION = "have_bt_permissions"
         private const val KEY_REGISTRY = "registry"
         private val TIME_FORMAT = SimpleDateFormat.getDateTimeInstance()

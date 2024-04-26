@@ -59,16 +59,14 @@ class ScannerForegroundService : Service() {
                                 applicationContext,
                                 result
                             ) { hasData ->
-                                if(hasData) {
-                                    numberOfAttempts ++
+                                if (hasData) {
+                                    numberOfAttempts++
                                     isDeviceFound = true
                                     BluetoothManager.getDefaultInstance().stopScan(callback)
-                                    applicationContext.logViewModel.append("Scanner stopped")
-                                    applicationContext.logViewModel.append("Setting device data flag to 0000, attempt number $numberOfAttempts")
                                 } else {
-                                    if(numberOfAttempts > 0) {
+                                    if (numberOfAttempts > 0) {
+                                        applicationContext.logViewModel.append("Successfully set to 0000 in $numberOfAttempts attempts")
                                         numberOfAttempts = 0
-                                        applicationContext.logViewModel.append("Resetting number of attempts to 0")
                                     }
                                 }
                             }
@@ -81,7 +79,6 @@ class ScannerForegroundService : Service() {
             applicationContext.logViewModel.state.collectLatest { state ->
                 when (state) {
                     LogViewModel.STATE.STATE_IDLE -> {
-                        applicationContext.logViewModel.append("Scanner started")
                         BluetoothManager.getDefaultInstance().scanForData(callback)
                     }
 
