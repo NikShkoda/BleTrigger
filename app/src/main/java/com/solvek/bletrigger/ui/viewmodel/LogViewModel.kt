@@ -49,21 +49,13 @@ class LogViewModel(context: Context) {
         return state.value
     }
 
-    fun onDevice(id: String, hasData: Boolean) {
-        if (hasData) {
-            _state.value = STATE.STATE_DATA
-        }
-        if (registry.isSameStatus(id, hasData)) {
+    fun onDevice(id: String) {
+        _state.value = STATE.STATE_DATA
+        if (registry.isSameStatus(id, true)) {
             return
         }
 
-        if (hasData) {
-            append("$id is advertising 0100")
-        } else {
-            append("$id is advertising 0000")
-        }
-
-        registry.store(id, hasData)
+        registry.store(id, true)
 
         prefs.edit().putString(KEY_REGISTRY, registry.toJson()).apply()
     }

@@ -39,7 +39,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
 
     @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
-        //applicationContext.logViewModel.append("Started a worker")
+        applicationContext.logViewModel.append("Started a worker")
         val callback = object : BluetoothGattCallback() {
             override fun onConnectionStateChange(
                 gatt: BluetoothGatt,
@@ -50,16 +50,12 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                     when (newState) {
                         BluetoothProfile.STATE_CONNECTED -> {
                             Log.i(TAG, "Connected to patch")
-                            //applicationContext.logViewModel.append("Connected to patch")
-                            connectContinuation.resume(ContinuationResult.Success(gatt))
-                            //BluetoothManager.getDefaultInstance().discoverServices(gatt)
-                            //applicationContext.logViewModel.append("Start to discover time service")
+                            BluetoothManager.getDefaultInstance().discoverServices(gatt)
                         }
 
                         BluetoothProfile.STATE_DISCONNECTED -> {
                             Log.i(TAG, "Disconnected from patch")
-                            //applicationContext.logViewModel.append("Disconnected from patch")
-                            //BluetoothManager.getDefaultInstance().closeGatt(gatt)
+                            BluetoothManager.getDefaultInstance().closeGatt(gatt)
                             disconnectContinuation.resume(ContinuationResult.Success(gatt))
                         }
                     }
@@ -71,12 +67,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
                 super.onServicesDiscovered(gatt, status)
                 if (status == BluetoothGatt.GATT_SUCCESS) {
-                    applicationContext.logViewModel.append("Time service found!")
-                    if (BluetoothManager.getDefaultInstance().readTime(gatt)) {
-                        applicationContext.logViewModel.append("Reading time started!")
-                    } else {
-                        applicationContext.logViewModel.append("Reading time can't be started!")
-                    }
+                   BluetoothManager.getDefaultInstance().readTime(gatt)
                 } else {
                     applicationContext.logViewModel.append("Time service was not discovered! Error status is ${status}")
                 }
@@ -146,7 +137,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                     // Add more just in case
                     delayToNextCycle += Duration.ofSeconds(5).toMillis()
                 }
-                //applicationContext.logViewModel.append("Waiting ${delayToNextCycle / 1000L} seconds before disconnecting from the patch")
+                applicationContext.logViewModel.append("Waiting ${delayToNextCycle / 1000L} seconds before disconnecting from the patch")
                 delay(delayToNextCycle)
                 suspendCancellableCoroutine { continuation ->
                     this.disconnectContinuation = continuation

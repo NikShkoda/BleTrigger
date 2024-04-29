@@ -67,7 +67,7 @@ private fun Context.handleScanResult(
             )
     }
     Log.i(TAG, "Has data status: $hasData")
-    logViewModel.onDevice(address, hasData)
+    logViewModel.onDevice(address)
     onResult(hasData)
 }
 

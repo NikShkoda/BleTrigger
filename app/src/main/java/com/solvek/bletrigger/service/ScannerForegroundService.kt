@@ -1,6 +1,7 @@
 package com.solvek.bletrigger.service
 
 import android.annotation.SuppressLint
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -12,7 +13,13 @@ import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
+import androidx.work.Constraints
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.solvek.bletrigger.R
@@ -21,14 +28,17 @@ import com.solvek.bletrigger.manager.BluetoothManager
 import com.solvek.bletrigger.ui.activity.MainActivity
 import com.solvek.bletrigger.ui.viewmodel.LogViewModel
 import com.solvek.bletrigger.utils.BLE_WORK_CONNECT
-import com.solvek.bletrigger.utils.onFound
+import com.solvek.bletrigger.worker.SendRequestWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.time.Duration
 
 class ScannerForegroundService : Service() {
 
@@ -41,9 +51,6 @@ class ScannerForegroundService : Service() {
     private lateinit var notificationManager: NotificationManager
     private lateinit var callback: ScanCallback
 
-    private var isDeviceFound = false
-    private var numberOfAttempts: Int = 0
-
     @SuppressLint("MissingPermission")
     override fun onCreate() {
         super.onCreate()
@@ -54,34 +61,40 @@ class ScannerForegroundService : Service() {
                 super.onScanResult(callbackType, result)
                 scope.launch {
                     lock.withLock {
-                        if (!isDeviceFound) {
-                            onFound(
-                                applicationContext,
-                                result
-                            ) { hasData ->
-                                if(hasData) {
-                                    numberOfAttempts ++
-                                    isDeviceFound = true
-                                    BluetoothManager.getDefaultInstance().stopScan(callback)
-                                    applicationContext.logViewModel.append("Scanner stopped")
-                                    applicationContext.logViewModel.append("Setting device data flag to 0000, attempt number $numberOfAttempts")
-                                } else {
-                                    if(numberOfAttempts > 0) {
-                                        numberOfAttempts = 0
-                                        applicationContext.logViewModel.append("Resetting number of attempts to 0")
-                                    }
-                                }
-                            }
-                        }
+                        logViewModel.append("Device is advertising 0100")
+                        WorkManager.getInstance(applicationContext)
+                            .enqueueUniqueWork(
+                                BLE_WORK_CONNECT,
+                                ExistingWorkPolicy.REPLACE,
+                                OneTimeWorkRequestBuilder<SendRequestWorker>()
+                                    .setInputData(
+                                        Data.Builder().putString(
+                                            SendRequestWorker.PARAM_DEVICE_ADDRESS,
+                                            result.device.address
+                                        ).build()
+                                    )
+                                    .setConstraints(
+                                        Constraints.Builder()
+                                            .setRequiredNetworkType(NetworkType.CONNECTED).build()
+                                    ).build()
+                            )
+                        logViewModel.onDevice(
+                            result.device.address.replace(
+                                ":",
+                                ""
+                            )
+                        )
+                        BluetoothManager.getDefaultInstance().stopScan(callback)
+                        logViewModel.append("Scanner stopped")
                     }
                 }
             }
         }
         scope.launch {
-            applicationContext.logViewModel.state.collectLatest { state ->
+            logViewModel.state.collectLatest { state ->
                 when (state) {
                     LogViewModel.STATE.STATE_IDLE -> {
-                        applicationContext.logViewModel.append("Scanner started")
+                        logViewModel.append("Scanner started")
                         BluetoothManager.getDefaultInstance().scanForData(callback)
                     }
 
@@ -90,12 +103,19 @@ class ScannerForegroundService : Service() {
                             .getWorkInfosForUniqueWorkFlow(BLE_WORK_CONNECT)
                             .collectLatest { result ->
                                 if (result.all { it.state == WorkInfo.State.SUCCEEDED }) {
-                                    applicationContext.logViewModel.onState(LogViewModel.STATE.STATE_IDLE)
-                                    isDeviceFound = false
+                                    logViewModel.onState(LogViewModel.STATE.STATE_IDLE)
+                                    logViewModel.append("Device is advertising 0000")
                                 }
                             }
                     }
                 }
+            }
+        }
+
+        scope.launch {
+            while (isActive) {
+                delay(Duration.ofMinutes(5).toMillis())
+                logViewModel.append("App is still working!")
             }
         }
     }
@@ -104,6 +124,27 @@ class ScannerForegroundService : Service() {
         val notification = generateNotification()
         startForeground(NOTIFICATION_ID, notification)
         return START_NOT_STICKY
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        logViewModel.append("Revive app!")
+        val restartServiceIntent =
+            Intent(applicationContext, ScannerForegroundService::class.java).also {
+                it.setPackage(packageName)
+            }
+        val restartServicePendingIntent: PendingIntent = PendingIntent.getService(
+            this, 1, restartServiceIntent,
+            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+        )
+        applicationContext.getSystemService(Context.ALARM_SERVICE);
+        val alarmService: AlarmManager =
+            applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager;
+        alarmService.set(
+            AlarmManager.ELAPSED_REALTIME,
+            SystemClock.elapsedRealtime() + 1000,
+            restartServicePendingIntent
+        )
     }
 
     override fun onBind(intent: Intent?): IBinder {
