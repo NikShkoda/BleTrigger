@@ -113,7 +113,7 @@ class ScannerForegroundService : Service() {
         }
 
         scope.launch {
-            while (isActive) {
+            while (true) {
                 delay(Duration.ofMinutes(5).toMillis())
                 logViewModel.append("App is still working!")
             }
