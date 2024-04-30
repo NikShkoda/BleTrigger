@@ -52,7 +52,7 @@ class BluetoothManager private constructor(context: Context) {
     private val settings by lazy {
         ScanSettings.Builder()
             .setLegacy(false)
-            //.setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH)
+            .setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH)
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
             .build()
@@ -140,7 +140,7 @@ class BluetoothManager private constructor(context: Context) {
     fun closeGatt(gatt: BluetoothGatt) {
         try {
             gatt.disconnect()
-            refresh(gatt)
+            //refresh(gatt)
             gatt.close()
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")

@@ -11,18 +11,14 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
 import com.solvek.bletrigger.manager.BluetoothManager
-import com.solvek.bletrigger.utils.getTimeCycles
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.time.Duration
-import java.util.Calendar
 import java.util.UUID
 import kotlin.coroutines.resume
 
@@ -32,10 +28,6 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
 
     private lateinit var connectContinuation: CancellableContinuation<ContinuationResult>
     private lateinit var disconnectContinuation: CancellableContinuation<ContinuationResult>
-
-    private val timeCycles by lazy {
-        getTimeCycles()
-    }
 
     @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
@@ -117,33 +109,15 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
         }
         when (result) {
             ContinuationResult.EndedEarlier -> {
+                applicationContext.logViewModel.append("Ended earlier, issue!")
                 makeRequest()
             }
 
             is ContinuationResult.Success -> {
-                val timeNow = Calendar.getInstance()
-                val timeNextCycle = Calendar.getInstance()
-                val currentMinute = timeNow.get(Calendar.MINUTE)
-                val currentSecond = timeNow.get(Calendar.SECOND)
-                val nextCycleMinute = timeCycles.first { minute -> currentMinute < minute }
-                timeNextCycle.add(Calendar.SECOND, 60 - currentSecond)
-                while (timeNextCycle.get(Calendar.MINUTE) != nextCycleMinute) {
-                    timeNextCycle.add(Calendar.MINUTE, 1)
-                }
-                var delayToNextCycle = timeNextCycle.timeInMillis - timeNow.timeInMillis
-                if(delayToNextCycle > Duration.ofMinutes(1).plus(Duration.ofSeconds(20)).toMillis()) {
-                    delayToNextCycle = Duration.ofSeconds(10).toMillis()
-                } else {
-                    // Add more just in case
-                    delayToNextCycle += Duration.ofSeconds(5).toMillis()
-                }
-                applicationContext.logViewModel.append("Waiting ${delayToNextCycle / 1000L} seconds before disconnecting from the patch")
-                delay(delayToNextCycle)
                 suspendCancellableCoroutine { continuation ->
                     this.disconnectContinuation = continuation
                     BluetoothManager.getDefaultInstance().disconnectDevice(result.gatt)
                 }
-                delay(1000L)
                 makeRequest()
             }
         }
