@@ -64,6 +64,9 @@ class ScannerForegroundService : Service() {
         scope.launch {
             while (true) {
                 delay(Duration.ofMinutes(5).toMillis())
+                if(powerManager.isDeviceIdleMode) {
+                    logViewModel.append("App is in idle mode!")
+                }
                 logViewModel.append("App is still working!")
             }
         }

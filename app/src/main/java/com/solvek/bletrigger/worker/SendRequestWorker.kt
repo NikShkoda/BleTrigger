@@ -48,12 +48,14 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 super.onScanResult(callbackType, result)
                 BluetoothManager.getDefaultInstance().stopScan(this)
+                applicationContext.logViewModel.append("Scan ended!")
                 scanContinuation.resume(ContinuationResult.ScanSuccess(result.device))
             }
         }
         val scanResult = suspendCancellableCoroutine { scanContinuation ->
             this.scanContinuation = scanContinuation
             BluetoothManager.getDefaultInstance().scanForData(scanCallback)
+            applicationContext.logViewModel.append("Scan started!")
         }
         val gattCallback = object : BluetoothGattCallback() {
             override fun onConnectionStateChange(
