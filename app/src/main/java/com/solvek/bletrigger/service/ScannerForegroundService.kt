@@ -13,6 +13,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
+import android.os.PowerManager
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.work.Constraints
@@ -49,6 +50,7 @@ class ScannerForegroundService : Service() {
     private val lock = Mutex()
 
     private lateinit var notificationManager: NotificationManager
+    private lateinit var powerManager: PowerManager
     private lateinit var callback: ScanCallback
 
     @SuppressLint("MissingPermission")
@@ -56,6 +58,7 @@ class ScannerForegroundService : Service() {
         super.onCreate()
 
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 super.onScanResult(callbackType, result)
@@ -115,6 +118,9 @@ class ScannerForegroundService : Service() {
         scope.launch {
             while (true) {
                 delay(Duration.ofMinutes(5).toMillis())
+                if(powerManager.isDeviceIdleMode) {
+                    logViewModel.append("App is in doze mode!")
+                }
                 logViewModel.append("App is still working!")
             }
         }

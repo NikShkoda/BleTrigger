@@ -42,11 +42,13 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                     when (newState) {
                         BluetoothProfile.STATE_CONNECTED -> {
                             Log.i(TAG, "Connected to patch")
+                            applicationContext.logViewModel.append("Connected to patch device!")
                             BluetoothManager.getDefaultInstance().discoverServices(gatt)
                         }
 
                         BluetoothProfile.STATE_DISCONNECTED -> {
                             Log.i(TAG, "Disconnected from patch")
+                            applicationContext.logViewModel.append("Disconnected from patch device!")
                             BluetoothManager.getDefaultInstance().closeGatt(gatt)
                             disconnectContinuation.resume(ContinuationResult.Success(gatt))
                         }
