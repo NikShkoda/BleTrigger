@@ -53,7 +53,7 @@ class BluetoothManager private constructor(context: Context) {
         ScanSettings.Builder()
             .setLegacy(false)
             .setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH)
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
             .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
             .build()
     }

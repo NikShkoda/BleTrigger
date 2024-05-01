@@ -8,7 +8,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
@@ -16,18 +15,13 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
-import androidx.work.Constraints
-import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.solvek.bletrigger.R
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
-import com.solvek.bletrigger.manager.BluetoothManager
 import com.solvek.bletrigger.ui.activity.MainActivity
-import com.solvek.bletrigger.ui.viewmodel.LogViewModel
 import com.solvek.bletrigger.utils.BLE_WORK_CONNECT
 import com.solvek.bletrigger.worker.SendRequestWorker
 import kotlinx.coroutines.CoroutineScope
@@ -35,19 +29,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.time.Duration
 
 class ScannerForegroundService : Service() {
 
-    private val job = SupervisorJob()
-    private val scope = CoroutineScope(Dispatchers.IO + job)
-
     private val localBinder = LocalBinder()
-    private val lock = Mutex()
 
     private lateinit var notificationManager: NotificationManager
     private lateinit var powerManager: PowerManager
@@ -57,73 +44,44 @@ class ScannerForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
 
+        val job = SupervisorJob()
+        val scope = CoroutineScope(Dispatchers.IO + job)
+
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        callback = object : ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: ScanResult) {
-                super.onScanResult(callbackType, result)
-                scope.launch {
-                    lock.withLock {
-                        logViewModel.append("Device is advertising 0100")
-                        WorkManager.getInstance(applicationContext)
-                            .enqueueUniqueWork(
-                                BLE_WORK_CONNECT,
-                                ExistingWorkPolicy.REPLACE,
-                                OneTimeWorkRequestBuilder<SendRequestWorker>()
-                                    .setInputData(
-                                        Data.Builder().putString(
-                                            SendRequestWorker.PARAM_DEVICE_ADDRESS,
-                                            result.device.address
-                                        ).build()
-                                    )
-                                    .setConstraints(
-                                        Constraints.Builder()
-                                            .setRequiredNetworkType(NetworkType.CONNECTED).build()
-                                    ).build()
-                            )
-                        logViewModel.onDevice(
-                            result.device.address.replace(
-                                ":",
-                                ""
-                            )
-                        )
-                        BluetoothManager.getDefaultInstance().stopScan(callback)
-                        logViewModel.append("Scanner stopped")
-                    }
-                }
-            }
-        }
+        startWorker()
         scope.launch {
-            logViewModel.state.collectLatest { state ->
-                when (state) {
-                    LogViewModel.STATE.STATE_IDLE -> {
-                        logViewModel.append("Scanner started")
-                        BluetoothManager.getDefaultInstance().scanForData(callback)
-                    }
-
-                    LogViewModel.STATE.STATE_DATA -> {
-                        WorkManager.getInstance(applicationContext)
-                            .getWorkInfosForUniqueWorkFlow(BLE_WORK_CONNECT)
-                            .collectLatest { result ->
-                                if (result.all { it.state == WorkInfo.State.SUCCEEDED }) {
-                                    logViewModel.onState(LogViewModel.STATE.STATE_IDLE)
-                                    logViewModel.append("Device is advertising 0000")
-                                }
-                            }
+            WorkManager.getInstance(applicationContext)
+                .getWorkInfosForUniqueWorkFlow(BLE_WORK_CONNECT)
+                .collectLatest { result ->
+                    if (result.all { it.state == WorkInfo.State.SUCCEEDED }) {
+                        logViewModel.append("Patch device should advertise 0000")
+                        startWorker()
+                    } else if(result.any { it.state == WorkInfo.State.CANCELLED || it.state == WorkInfo.State.FAILED }) {
+                        logViewModel.append("Worker failed!")
                     }
                 }
-            }
+
         }
 
         scope.launch {
             while (true) {
                 delay(Duration.ofMinutes(5).toMillis())
-                if(powerManager.isDeviceIdleMode) {
+                if (powerManager.isDeviceIdleMode) {
                     logViewModel.append("App is in doze mode!")
                 }
                 logViewModel.append("App is still working!")
             }
         }
+    }
+
+    private fun startWorker() {
+        WorkManager.getInstance(applicationContext)
+            .enqueueUniqueWork(
+                BLE_WORK_CONNECT,
+                ExistingWorkPolicy.REPLACE,
+                OneTimeWorkRequestBuilder<SendRequestWorker>().build()
+            )
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
@@ -196,6 +154,6 @@ class ScannerForegroundService : Service() {
 
     companion object {
         private const val NOTIFICATION_ID = 1
-        private const val NOTIFICATION_CHANNEL_ID = "while_in_use_channel_01"
+        const val NOTIFICATION_CHANNEL_ID = "while_in_use_channel_01"
     }
 }

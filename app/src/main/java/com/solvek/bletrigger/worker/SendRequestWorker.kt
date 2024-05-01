@@ -1,16 +1,28 @@
 package com.solvek.bletrigger.worker
 
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothProfile
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.solvek.bletrigger.R
 import com.solvek.bletrigger.application.BleTriggerApplication.Companion.logViewModel
 import com.solvek.bletrigger.manager.BluetoothManager
+import com.solvek.bletrigger.service.ScannerForegroundService
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -26,13 +38,25 @@ import kotlin.coroutines.resume
 class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
-    private lateinit var connectContinuation: CancellableContinuation<ContinuationResult>
-    private lateinit var disconnectContinuation: CancellableContinuation<ContinuationResult>
+    private lateinit var continuation: CancellableContinuation<ContinuationResult>
 
     @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
+        setForeground(createForegroundInfo())
         applicationContext.logViewModel.append("Started a worker")
-        val callback = object : BluetoothGattCallback() {
+        val scanCallback = object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
+                super.onScanResult(callbackType, result)
+                BluetoothManager.getDefaultInstance().stopScan(this)
+                applicationContext.logViewModel.append("Patch device is advertising 0100")
+                continuation.resume(ContinuationResult.ScanSuccess(result.device))
+            }
+        }
+        val scanResult = suspendCancellableCoroutine { scanContinuation ->
+            this.continuation = scanContinuation
+            BluetoothManager.getDefaultInstance().scanForData(scanCallback)
+        }
+        val gattCallback = object : BluetoothGattCallback() {
             override fun onConnectionStateChange(
                 gatt: BluetoothGatt,
                 status: Int,
@@ -50,7 +74,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                             Log.i(TAG, "Disconnected from patch")
                             applicationContext.logViewModel.append("Disconnected from patch device!")
                             BluetoothManager.getDefaultInstance().closeGatt(gatt)
-                            disconnectContinuation.resume(ContinuationResult.Success(gatt))
+                            continuation.resume(ContinuationResult.ConnectionSuccess(gatt))
                         }
                     }
                 } else {
@@ -61,7 +85,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
                 super.onServicesDiscovered(gatt, status)
                 if (status == BluetoothGatt.GATT_SUCCESS) {
-                   BluetoothManager.getDefaultInstance().readTime(gatt)
+                    BluetoothManager.getDefaultInstance().readTime(gatt)
                 } else {
                     applicationContext.logViewModel.append("Time service was not discovered! Error status is ${status}")
                 }
@@ -92,38 +116,67 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                                 )
                             }"
                         )
-                        connectContinuation.resume(ContinuationResult.Success(gatt))
+                        BluetoothManager.getDefaultInstance().disconnectDevice(gatt)
                     }
                 } else {
                     applicationContext.logViewModel.append("Can't read characteristic! Error status is $status")
                 }
             }
         }
-        val deviceAddress = inputData.getString(PARAM_DEVICE_ADDRESS)
-            ?: error("Device should be discovered before connection")
-        val result = suspendCancellableCoroutine { continuation ->
-            this.connectContinuation = continuation
-            BluetoothManager.getDefaultInstance().connectToDevice(
-                applicationContext,
-                deviceAddress,
-                callback
-            )
+        BluetoothManager.getDefaultInstance().connectToDevice(
+            applicationContext,
+            (scanResult as ContinuationResult.ScanSuccess).device.address,
+            gattCallback
+        )
+        suspendCancellableCoroutine { connectionContinuation ->
+            this.continuation = connectionContinuation
         }
-        when (result) {
-            ContinuationResult.EndedEarlier -> {
-                applicationContext.logViewModel.append("Ended earlier, issue!")
-                makeRequest()
-            }
-
-            is ContinuationResult.Success -> {
-                suspendCancellableCoroutine { continuation ->
-                    this.disconnectContinuation = continuation
-                    BluetoothManager.getDefaultInstance().disconnectDevice(result.gatt)
-                }
-                makeRequest()
-            }
-        }
+        makeRequest()
         return Result.success()
+    }
+
+    // Creates an instance of ForegroundInfo which can be used to update the
+    // ongoing notification.
+    private fun createForegroundInfo(): ForegroundInfo {
+        val mainNotificationText = "App is working in background"
+        val titleText = "BleTrigger"
+        val notificationChannel = NotificationChannel(
+            ScannerForegroundService.NOTIFICATION_CHANNEL_ID,
+            titleText,
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
+        val notificationManager =
+            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(notificationChannel)
+
+        val intent = WorkManager.getInstance(applicationContext)
+            .createCancelPendingIntent(getId())
+
+        val notificationCompatBuilder =
+            NotificationCompat.Builder(
+                applicationContext,
+                ScannerForegroundService.NOTIFICATION_CHANNEL_ID
+            )
+
+        val notification = notificationCompatBuilder
+            .setContentTitle(titleText)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentText(mainNotificationText)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setOngoing(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .addAction(
+                R.drawable.ic_go_to,
+                "Stop worker",
+                intent
+            )
+            .build()
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+        } else {
+            ForegroundInfo(NOTIFICATION_ID, notification)
+        }
     }
 
     private fun ByteBuffer.getTime(): Long {
@@ -161,10 +214,11 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
         // For testing purposes. This way it's easier to spot request log
         private const val TAG = "BluetoothManager"
         const val PARAM_DEVICE_ADDRESS = "PARAM_DEVICE_ADDRESS"
+        private const val NOTIFICATION_ID = 2
     }
 
     sealed class ContinuationResult {
-        data class Success(val gatt: BluetoothGatt) : ContinuationResult()
-        object EndedEarlier : ContinuationResult()
+        data class ScanSuccess(val device: BluetoothDevice) : ContinuationResult()
+        data class ConnectionSuccess(val gatt: BluetoothGatt) : ContinuationResult()
     }
 }
