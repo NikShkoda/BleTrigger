@@ -55,10 +55,7 @@ class ScannerForegroundService : Service() {
                 .getWorkInfosForUniqueWorkFlow(BLE_WORK_CONNECT)
                 .collectLatest { result ->
                     if (result.all { it.state == WorkInfo.State.SUCCEEDED }) {
-                        logViewModel.append("Patch device should advertise 0000")
                         startWorker()
-                    } else if(result.any { it.state == WorkInfo.State.CANCELLED || it.state == WorkInfo.State.FAILED }) {
-                        logViewModel.append("Worker failed!")
                     }
                 }
 
@@ -67,9 +64,6 @@ class ScannerForegroundService : Service() {
         scope.launch {
             while (true) {
                 delay(Duration.ofMinutes(5).toMillis())
-                if (powerManager.isDeviceIdleMode) {
-                    logViewModel.append("App is in doze mode!")
-                }
                 logViewModel.append("App is still working!")
             }
         }
@@ -92,7 +86,6 @@ class ScannerForegroundService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        logViewModel.append("Revive app!")
         val restartServiceIntent =
             Intent(applicationContext, ScannerForegroundService::class.java).also {
                 it.setPackage(packageName)

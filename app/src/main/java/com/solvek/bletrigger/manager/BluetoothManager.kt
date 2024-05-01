@@ -1,7 +1,9 @@
 package com.solvek.bletrigger.manager
 
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
@@ -15,10 +17,14 @@ import java.util.UUID
 
 class BluetoothManager private constructor(context: Context) {
 
-    private val bluetoothAdapter by lazy {
-        (context.getSystemService(
+    private val bluetoothManager by lazy {
+        context.getSystemService(
             ComponentActivity.BLUETOOTH_SERVICE
-        ) as android.bluetooth.BluetoothManager).adapter
+        ) as android.bluetooth.BluetoothManager
+    }
+
+    private val bluetoothAdapter by lazy {
+        bluetoothManager.adapter
     }
 
     private val idleStateFilters by lazy {
@@ -57,6 +63,9 @@ class BluetoothManager private constructor(context: Context) {
             .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
             .build()
     }
+
+    private var bluetoothGatt: BluetoothGatt? = null
+    private var bluetoothDevice: BluetoothDevice? = null
 
     fun scanForData(
         scanCallback: ScanCallback
@@ -101,10 +110,24 @@ class BluetoothManager private constructor(context: Context) {
         context: Context,
         address: String,
         bluetoothGattCallback: BluetoothGattCallback
-    ) {
+    ): BluetoothGatt {
         try {
             val device = bluetoothAdapter.getRemoteDevice(address)
-            device.connectGatt(context, false, bluetoothGattCallback)
+            if (bluetoothDevice == null) {
+                bluetoothDevice = device
+            }
+            return bluetoothGatt?.let { bluetoothGatt ->
+                bluetoothGatt.connect()
+                return@let bluetoothGatt
+            } ?: run {
+                return@run device.connectGatt(
+                    context,
+                    false,
+                    bluetoothGattCallback
+                ).also {
+                    bluetoothGatt = it
+                }
+            }
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }
@@ -112,15 +135,32 @@ class BluetoothManager private constructor(context: Context) {
 
     fun discoverServices(bluetoothGatt: BluetoothGatt) {
         try {
-            bluetoothGatt.discoverServices()
+            (this.bluetoothGatt ?: bluetoothGatt).let { gatt ->
+                if (gatt.services.isEmpty()) {
+                    gatt.discoverServices()
+                } else {
+                    readTime(gatt)
+                }
+            }
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }
     }
 
-    fun disconnectDevice(bluetoothGatt: BluetoothGatt) {
+    fun disconnectDevice() {
         try {
-            bluetoothGatt.disconnect()
+            bluetoothGatt?.disconnect()
+        } catch (error: SecurityException) {
+            error("Scan is only allowed if app has needed permissions")
+        }
+    }
+
+    fun isDisconnected(): Boolean {
+        try {
+            return bluetoothManager.getConnectionState(
+                bluetoothDevice,
+                BluetoothProfile.GATT
+            ) != BluetoothProfile.STATE_CONNECTED
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }
@@ -131,7 +171,7 @@ class BluetoothManager private constructor(context: Context) {
             val characteristic = gatt.getService(UUID.fromString(READ_TIME_SERVICE))
                 ?.getCharacteristic(UUID.fromString(READ_TIME_CHARACTERISTIC))
 
-            return gatt.readCharacteristic(characteristic)
+            return (this.bluetoothGatt ?: gatt).readCharacteristic(characteristic)
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }
@@ -139,9 +179,7 @@ class BluetoothManager private constructor(context: Context) {
 
     fun closeGatt(gatt: BluetoothGatt) {
         try {
-            gatt.disconnect()
-            //refresh(gatt)
-            gatt.close()
+            (this.bluetoothGatt ?: gatt).disconnect()
         } catch (error: SecurityException) {
             error("Scan is only allowed if app has needed permissions")
         }
@@ -152,7 +190,7 @@ class BluetoothManager private constructor(context: Context) {
             // BluetoothGatt gatt
             val refresh: Method = gatt.javaClass.getMethod("refresh")
             //noinspection ConstantConditions
-            val success = refresh.invoke(gatt) as Boolean
+            val success = refresh.invoke((this.bluetoothGatt ?: gatt)) as Boolean
             Log.i(TAG, "Refreshing result: $success")
         } catch (e: Exception) {
             Log.i(TAG, "error")

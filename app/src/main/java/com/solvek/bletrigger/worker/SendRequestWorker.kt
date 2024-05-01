@@ -25,6 +25,7 @@ import com.solvek.bletrigger.manager.BluetoothManager
 import com.solvek.bletrigger.service.ScannerForegroundService
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
@@ -38,22 +39,20 @@ import kotlin.coroutines.resume
 class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
-    private lateinit var continuation: CancellableContinuation<ContinuationResult>
+    private lateinit var scanContinuation: CancellableContinuation<ContinuationResult>
 
     @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
         setForeground(createForegroundInfo())
-        applicationContext.logViewModel.append("Started a worker")
         val scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 super.onScanResult(callbackType, result)
                 BluetoothManager.getDefaultInstance().stopScan(this)
-                applicationContext.logViewModel.append("Patch device is advertising 0100")
-                continuation.resume(ContinuationResult.ScanSuccess(result.device))
+                scanContinuation.resume(ContinuationResult.ScanSuccess(result.device))
             }
         }
         val scanResult = suspendCancellableCoroutine { scanContinuation ->
-            this.continuation = scanContinuation
+            this.scanContinuation = scanContinuation
             BluetoothManager.getDefaultInstance().scanForData(scanCallback)
         }
         val gattCallback = object : BluetoothGattCallback() {
@@ -73,12 +72,10 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                         BluetoothProfile.STATE_DISCONNECTED -> {
                             Log.i(TAG, "Disconnected from patch")
                             applicationContext.logViewModel.append("Disconnected from patch device!")
-                            BluetoothManager.getDefaultInstance().closeGatt(gatt)
-                            continuation.resume(ContinuationResult.ConnectionSuccess(gatt))
                         }
                     }
                 } else {
-                    BluetoothManager.getDefaultInstance().closeGatt(gatt)
+                    BluetoothManager.getDefaultInstance().disconnectDevice()
                 }
             }
 
@@ -86,8 +83,6 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                 super.onServicesDiscovered(gatt, status)
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     BluetoothManager.getDefaultInstance().readTime(gatt)
-                } else {
-                    applicationContext.logViewModel.append("Time service was not discovered! Error status is ${status}")
                 }
             }
 
@@ -103,6 +98,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                 super.onCharacteristicRead(gatt, characteristic, status)
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     if (characteristic.uuid == UUID.fromString(BluetoothManager.READ_TIME_CHARACTERISTIC)) {
+                        BluetoothManager.getDefaultInstance().disconnectDevice()
                         val buffer = ByteBuffer.wrap(characteristic.value)
                         val deviceTime = buffer.getTime()
                         applicationContext.logViewModel.append(
@@ -110,16 +106,9 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
                                 applicationContext.logViewModel.formatTime(
                                     deviceTime
                                 )
-                            }\nAndroid device time is: ${
-                                applicationContext.logViewModel.formatTime(
-                                    System.currentTimeMillis()
-                                )
                             }"
                         )
-                        BluetoothManager.getDefaultInstance().disconnectDevice(gatt)
                     }
-                } else {
-                    applicationContext.logViewModel.append("Can't read characteristic! Error status is $status")
                 }
             }
         }
@@ -128,10 +117,15 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             (scanResult as ContinuationResult.ScanSuccess).device.address,
             gattCallback
         )
-        suspendCancellableCoroutine { connectionContinuation ->
-            this.continuation = connectionContinuation
+        var disconnectAttempt = 0
+        delay(10000L)
+        while (!BluetoothManager.getDefaultInstance().isDisconnected()) {
+            BluetoothManager.getDefaultInstance().disconnectDevice()
+            disconnectAttempt++
+            applicationContext.logViewModel.append("Disconnecting again, attempt number $disconnectAttempt")
+            delay(2000L)
         }
-        makeRequest()
+        //makeRequest()
         return Result.success()
     }
 
@@ -173,7 +167,11 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             .build()
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ForegroundInfo(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+            ForegroundInfo(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+            )
         } else {
             ForegroundInfo(NOTIFICATION_ID, notification)
         }
@@ -200,10 +198,8 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             val conn = url.openConnection() as HttpURLConnection
             try {
                 conn.connect()
-                //applicationContext.logViewModel.append("Request to ${url} started")
                 val httpResponse = conn.getResponseCode()
                 Log.i(TAG, "Request to $url was made with response : ${httpResponse}")
-                //applicationContext.logViewModel.append("Request to $url was made with response : ${httpResponse}")
             } catch (error: Throwable) {
                 Log.e(TAG, error.message ?: "Unknown error")
             }
