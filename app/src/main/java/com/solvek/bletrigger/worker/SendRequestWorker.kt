@@ -139,10 +139,8 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
         val notificationChannel = NotificationChannel(
             ScannerForegroundService.NOTIFICATION_CHANNEL_ID,
             titleText,
-            NotificationManager.IMPORTANCE_HIGH
-        ).also {
-            it.setBypassDnd(true)
-        }
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
         val notificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(notificationChannel)
@@ -161,7 +159,6 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             .setSmallIcon(R.drawable.ic_notification)
             .setContentText(mainNotificationText)
             .setOngoing(true)
-            .setStyle(androidx.media.app.NotificationCompat.MediaStyle())
             .addAction(
                 R.drawable.ic_go_to,
                 "Stop worker",

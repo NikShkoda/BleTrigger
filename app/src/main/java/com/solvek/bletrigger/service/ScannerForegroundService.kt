@@ -117,10 +117,8 @@ class ScannerForegroundService : Service() {
         val notificationChannel = NotificationChannel(
             NOTIFICATION_CHANNEL_ID,
             titleText,
-            NotificationManager.IMPORTANCE_HIGH
-        ).also {
-            it.setBypassDnd(true)
-        }
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
         notificationManager.createNotificationChannel(notificationChannel)
 
         val launchActivityIntent = Intent(this, MainActivity::class.java)
@@ -136,7 +134,6 @@ class ScannerForegroundService : Service() {
             .setContentTitle(titleText)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentText(mainNotificationText)
-            .setStyle(androidx.media.app.NotificationCompat.MediaStyle())
             .setOngoing(true)
             .addAction(
                 R.drawable.ic_go_to,
