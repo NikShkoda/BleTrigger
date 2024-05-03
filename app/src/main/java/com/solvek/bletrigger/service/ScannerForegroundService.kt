@@ -64,7 +64,7 @@ class ScannerForegroundService : Service() {
         scope.launch {
             while (true) {
                 delay(Duration.ofMinutes(5).toMillis())
-                if(powerManager.isDeviceIdleMode) {
+                if (powerManager.isDeviceIdleMode) {
                     logViewModel.append("App is in idle mode!")
                 }
                 logViewModel.append("App is still working!")
@@ -115,8 +115,12 @@ class ScannerForegroundService : Service() {
         val mainNotificationText = "App is working in background"
         val titleText = "BleTrigger"
         val notificationChannel = NotificationChannel(
-            NOTIFICATION_CHANNEL_ID, titleText, NotificationManager.IMPORTANCE_DEFAULT
-        )
+            NOTIFICATION_CHANNEL_ID,
+            titleText,
+            NotificationManager.IMPORTANCE_HIGH
+        ).also {
+            it.setBypassDnd(true)
+        }
         notificationManager.createNotificationChannel(notificationChannel)
 
         val launchActivityIntent = Intent(this, MainActivity::class.java)
@@ -132,9 +136,8 @@ class ScannerForegroundService : Service() {
             .setContentTitle(titleText)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentText(mainNotificationText)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setStyle(androidx.media.app.NotificationCompat.MediaStyle())
             .setOngoing(true)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .addAction(
                 R.drawable.ic_go_to,
                 "Launch TriggerApp",
