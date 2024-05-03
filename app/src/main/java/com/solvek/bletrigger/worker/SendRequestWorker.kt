@@ -161,6 +161,7 @@ class SendRequestWorker(appContext: Context, workerParams: WorkerParameters) :
             .setSmallIcon(R.drawable.ic_notification)
             .setContentText(mainNotificationText)
             .setOngoing(true)
+            .setStyle(androidx.media.app.NotificationCompat.MediaStyle())
             .addAction(
                 R.drawable.ic_go_to,
                 "Stop worker",
