@@ -150,6 +150,6 @@ class ScannerForegroundService : Service() {
 
     companion object {
         private const val NOTIFICATION_ID = 1
-        const val NOTIFICATION_CHANNEL_ID = "while_in_use_channel_01"
+        const val NOTIFICATION_CHANNEL_ID = "while_in_use_channel_1"
     }
 }
